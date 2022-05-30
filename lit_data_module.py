@@ -16,7 +16,7 @@ class CelebADataModule(LightningDataModule):
         self.batch_size = batch_size
 
     def prepare_data(self) -> None:
-        CelebA(root="data", split="all", download=True)
+        CelebA(root="data/images", split="all", download=True)
 
     def setup(self, stage: Optional[str] = None) -> None:
         if stage == "fit" or stage is None:

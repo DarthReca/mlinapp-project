@@ -1,5 +1,9 @@
+# Other stuff
 .idea
-data
+.vscode
+data/**
+!data/list_attr_celeba.csv
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
