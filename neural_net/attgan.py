@@ -64,14 +64,14 @@ class AttGAN(pl.LightningModule):
     def training_step(
         self, batch, batch_idx: int, optimizer_idx: int
     ) -> Dict[str, float]:
-        img, att = batch["image"], batch["attributes"]
+        img, att = batch
 
         # TODO: Indagini più accurate su thres_int e questa generazione random di attributi
         idx = torch.randperm(len(att))
         desired_att = att[idx].contiguous()
         att_a_ = (att * 2 - 1) * 1.0  # args.thres_int
         att_b_ = (
-            (desired_att * 2 - 1) * torch.rand_like(desired_att) * (2 * 1.0)
+            (desired_att * 2 - 1) * torch.rand_like(desired_att.float()) * (2 * 1.0)
         )  # args.thres_int)
         ####
 
@@ -81,40 +81,43 @@ class AttGAN(pl.LightningModule):
             img_fake = self.generator(zs_a, att_b_, mode="dec")
             img_recon = self.generator(zs_a, att_a_, mode="dec")
             d_fake, dc_fake = self.discriminators(img_fake)
+            # TODO: protrebbe non essere uguale a freezare il discriminator (Indagine necessaria)
+            d_fake, dc_fake = d_fake.detach(), dc_fake.detach()
 
             r_loss = self.reconstruction_loss(img_recon, img)
-            d_loss = self.discriminators_loss(dc_fake, desired_att)
+            d_loss = self.discriminators_loss(dc_fake, desired_att.float())
             a_loss = self.adversarial_loss(d_fake, torch.ones_like(d_fake))
-            g_loss = a_loss + 0.5 * d_loss + 0.5 * r_loss
+            g_loss = a_loss + 10.0 * d_loss + 100.0 * r_loss
 
             return {
-                "loss": g_loss.item(),
-                "adversarial_loss": a_loss.item(),
-                "discriminators_loss": d_loss.item(),
-                "reconstruction_loss": r_loss.item(),
+                "loss": g_loss,
+                "adversarial_loss": a_loss,
+                "discriminators_loss": d_loss,
+                "reconstruction_loss": r_loss,
             }
 
         # Train discriminator
         if optimizer_idx == 1:
-            img_fake = self.G(img, att_b_).detach()
-            d_real, dc_real = self.D(img)
-            d_fake, dc_fake = self.D(img_fake)
+            img_fake = self.generator(img, att_b_).detach()
+            d_real, dc_real = self.discriminators(img)
+            d_fake, dc_fake = self.discriminators(img_fake)
 
             a_loss = self.adversarial_loss(
                 d_real, torch.ones_like(d_real)
             ) + self.adversarial_loss(d_fake, torch.zeros_like(d_fake))
-            a_gp = gradient_penalty(self.discriminator, img)
-            dc_loss = self.discriminators_loss(dc_real, att)
-            d_loss = a_loss + self.lambda_gp * a_gp + self.lambda_3 * dc_loss
+            a_gp = gradient_penalty(self.discriminators, img)
+            dc_loss = self.discriminators_loss(dc_real, att.float())
+            d_loss = a_loss + 10.0 * a_gp + 1.0 * dc_loss
+
             return {
-                "loss": d_loss.item(),
-                "adversarial_loss": a_loss.item(),
-                "discriminators_loss": d_loss.item(),
-                "gradient_penalty": a_gp.item(),
+                "loss": d_loss,
+                "adversarial_loss": a_loss,
+                "discriminators_loss": d_loss,
+                "gradient_penalty": a_gp,
             }
 
-    def test_step(self, batch, batch_idx):
-        img, att = batch["image"], batch["attributes"]
+    def test_step(self, batch, batch_idx: int):
+        img, att = batch
         target = torch.zeros_like(att)
         target[0] = 1
         out = self.generator(img, target)

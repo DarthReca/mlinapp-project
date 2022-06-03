@@ -9,7 +9,7 @@ def main():
     pl.seed_everything(42, True)
     # Setup
     datamodule = CelebADataModule(8)
-    model = neural_net.AttGAN({}, {"lr": 0.0002, "betas": (0.5, 0.999)})
+    model = neural_net.AttGAN({"n_attrs": 40}, {"lr": 0.0002, "betas": (0.5, 0.999)})
     callbacks = [
         pl_call.RichModelSummary(),
         # pl_call.EarlyStopping(),

@@ -133,6 +133,7 @@ class Discriminators(nn.Module):
         fc_acti_fn="lrelu",
         n_layers=5,
         img_size=128,
+        n_attrs=13,
         **kwargs
     ):
         super(Discriminators, self).__init__()
@@ -165,7 +166,7 @@ class Discriminators(nn.Module):
             LinearBlock(
                 1024 * self.f_size * self.f_size, fc_dim, fc_norm_fn, fc_acti_fn
             ),
-            LinearBlock(fc_dim, 13, "none", "none"),
+            LinearBlock(fc_dim, n_attrs, "none", "none"),
         )
 
     def forward(self, x):
