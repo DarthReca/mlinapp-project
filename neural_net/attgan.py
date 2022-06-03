@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 import torch.optim
 from torch import autograd
 
-from attgan_parts import Discriminators, Generator
+from .attgan_parts import Discriminators, Generator
 
 # Tutorial: https://pytorch-lightning.readthedocs.io/en/stable/notebooks/lightning_examples/basic-gan.html
 
@@ -39,15 +39,14 @@ def gradient_penalty(f, real, fake=None):
 class AttGAN(pl.LightningModule):
     def __init__(
         self,
-        generator_params: Dict[str, Any],
-        discriminators_params: Dict[str, Any],
+        model_params: Dict[str, Any],
         optimizers_params: Dict[str, Any],
     ):
         super().__init__()
         self.save_hyperparameters()
 
-        self.generator = Generator(**generator_params)
-        self.discriminators = Discriminators(**discriminators_params)
+        self.generator = Generator(**model_params)
+        self.discriminators = Discriminators(**model_params)
 
         self.reconstruction_loss = torch.nn.L1Loss()
         self.adversarial_loss = torch.nn.BCEWithLogitsLoss()
@@ -70,9 +69,9 @@ class AttGAN(pl.LightningModule):
         # TODO: Indagini più accurate su thres_int e questa generazione random di attributi
         idx = torch.randperm(len(att))
         desired_att = att[idx].contiguous()
-        att_a_ = (att * 2 - 1) * 0.5  # args.thres_int
+        att_a_ = (att * 2 - 1) * 1.0  # args.thres_int
         att_b_ = (
-            (desired_att * 2 - 1) * torch.rand_like(desired_att) * (2 * 0.5)
+            (desired_att * 2 - 1) * torch.rand_like(desired_att) * (2 * 1.0)
         )  # args.thres_int)
         ####
 
@@ -114,8 +113,8 @@ class AttGAN(pl.LightningModule):
                 "gradient_penalty": a_gp.item(),
             }
 
-    def validation_step(self):
-        return 0
-
-    def test_step(self):
-        return 0
+    def test_step(self, batch, batch_idx):
+        img, att = batch["image"], batch["attributes"]
+        target = torch.zeros_like(att)
+        target[0] = 1
+        out = self.generator(img, target)

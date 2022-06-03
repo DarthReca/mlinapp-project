@@ -3,6 +3,7 @@
 .vscode
 data/**
 !data/list_attr_celeba.csv
+checkpoint
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

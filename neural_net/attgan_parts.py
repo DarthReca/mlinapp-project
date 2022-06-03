@@ -7,7 +7,7 @@
 
 import torch
 import torch.nn as nn
-from attgan_utils import LinearBlock, Conv2dBlock, ConvTranspose2dBlock
+from .attgan_utils import LinearBlock, Conv2dBlock, ConvTranspose2dBlock
 
 # This architecture is for images of 128x128
 # In the original AttGAN, slim.conv2d uses padding 'same'
@@ -29,6 +29,7 @@ class Generator(nn.Module):
         shortcut_layers=1,
         inject_layers=0,
         img_size=128,
+        **kwargs
     ):
         super(Generator, self).__init__()
         self.shortcut_layers = min(shortcut_layers, dec_layers - 1)
@@ -132,6 +133,7 @@ class Discriminators(nn.Module):
         fc_acti_fn="lrelu",
         n_layers=5,
         img_size=128,
+        **kwargs
     ):
         super(Discriminators, self).__init__()
         self.f_size = img_size // 2**n_layers
