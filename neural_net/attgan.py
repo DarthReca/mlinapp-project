@@ -72,6 +72,10 @@ class AttGAN(pl.LightningModule):
         self.generator = Generator(**model_params)
         self.discriminators = Discriminators(**model_params)
 
+        weights = torch.load(f"weights/inject{self.generator.inject_layers}.pth",
+                             "gpu" if torch.cuda.is_available() else "cpu")
+        self.generator.load_state_dict(weights["G"])
+
         self.reconstruction_loss = torch.nn.L1Loss()
         self.adversarial_loss = torch.nn.BCEWithLogitsLoss()
         self.discriminators_loss = torch.nn.BCEWithLogitsLoss()

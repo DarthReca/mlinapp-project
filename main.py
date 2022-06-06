@@ -12,7 +12,7 @@ def main():
     # Setup model and data
     datamodule = CelebADataModule(8, num_workers=4, indices_file="indices_test.npy")
     model = neural_net.AttGAN(
-        {"n_attrs": 40}, {"lr": 0.0002, "betas": (0.5, 0.999)}, 23
+        {"n_attrs": 40, "inject_layers": 0}, {"lr": 0.0002, "betas": (0.5, 0.999)}, 23
     )
     # Setup trainer
     callbacks = [
