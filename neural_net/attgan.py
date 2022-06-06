@@ -10,6 +10,10 @@ from .attgan_parts import Discriminators, Generator
 # Tutorial: https://pytorch-lightning.readthedocs.io/en/stable/notebooks/lightning_examples/basic-gan.html
 
 
+def extract_rgb(img: torch.Tensor) -> torch.Tensor:
+    return (img * 255).round().byte()
+
+
 def gradient_penalty(f, real, fake=None):
     def interpolate(a, b=None):
         if b is None:  # interpolation in DRAGAN
@@ -55,6 +59,7 @@ class AttGAN(pl.LightningModule):
         self,
         model_params: Dict[str, Any],
         optimizers_params: Dict[str, Any],
+        target_attribute: int,
         thres_int=1,
         lambda_rec: float = 100.0,
         lambda_gp: float = 10.0,
@@ -112,15 +117,10 @@ class AttGAN(pl.LightningModule):
             g_loss = (
                 a_loss
                 + self.hparams["lambda_gc"] * d_loss
-                + self.hparam["lambda_rec"] * r_loss
+                + self.hparams["lambda_rec"] * r_loss
             )
-
-            return {
-                "loss": g_loss,
-                "adversarial_loss": a_loss,
-                "discriminators_loss": d_loss,
-                "reconstruction_loss": r_loss,
-            }
+            self.log("generator_loss", g_loss)
+            return g_loss
 
         # Train discriminator
         if optimizer_idx == 1:
@@ -141,19 +141,29 @@ class AttGAN(pl.LightningModule):
                 + self.hparams["lambda_gp"] * a_gp
                 + self.hparams["lambda_dc"] * dc_loss
             )
+            self.log("discriminator_loss", d_loss)
+            return d_loss
 
-            return {
-                "loss": d_loss,
-                "adversarial_loss": a_loss,
-                "discriminators_loss": d_loss,
-                "gradient_penalty": a_gp,
-            }
-
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx: int):
         img, att = batch
-        target = None
-        fake = self.generator(img, target)
-        self.log_dict(self.metrics(fake))
+
+        target = torch.zeros_like(att)
+        target[:, self.hparams["target_attribute"]] = 1
+
+        fake = (self.generator(img, target) * 255).round().byte()
+        self.metrics.update(fake)
+        for im in fake:
+            self.logger.experiment.log_image(
+                im, step=self.global_step, image_channels="first"
+            )
+
+    def validation_epoch_end(self, output) -> None:
+        for k, v in self.metrics.compute().items():
+            if isinstance(v, tuple):
+                for i, single in enumerate(v):
+                    self.log(k + f"_{i}", single)
+            else:
+                self.log(k, v)
 
     def test_step(self, batch, batch_idx: int):
         img, att = batch
