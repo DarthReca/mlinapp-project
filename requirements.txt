@@ -1,4 +1,7 @@
 pytorch_lightning
 torch
 torchvision
+rich
+torchmetrics
+torch-fidelity
 numpy

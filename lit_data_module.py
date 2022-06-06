@@ -10,14 +10,15 @@ import numpy as np
 class CelebADataModule(LightningDataModule):
     def __init__(self, batch_size: int, indices_file: Optional[str] = None):
         super().__init__()
-        self.transform = T.ToTensor()
+        self.transform = T.Compose([T.CenterCrop(size=128), T.ToTensor()])
+        self.val_dataset = None
         self.train_dataset = None
         self.test_dataset = None
         self.batch_size = batch_size
         self.indices = np.load(indices_file) if indices_file else None
 
     def prepare_data(self) -> None:
-        CelebA(root="data/images", split="all", download=True)
+        CelebA(root="data", split="all", download=True)
 
     def setup(self, stage: Optional[str] = None) -> None:
         # Filter
