@@ -4,3 +4,4 @@ torchvision
 rich
 torchmetrics
 torch-fidelity
+numpy
