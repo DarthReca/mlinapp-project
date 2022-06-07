@@ -4,6 +4,7 @@
 data
 checkpoint
 lightning_logs
+weights
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
