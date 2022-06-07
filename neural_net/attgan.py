@@ -16,10 +16,11 @@ def extract_rgb(img: torch.Tensor) -> torch.Tensor:
 
 def gradient_penalty(f, real, fake=None):
     def interpolate(a, b=None):
+        device = torch.device('cuda:'+str(a.get_device()) if a.get_device()>=0 else 'cpu')
         if b is None:  # interpolation in DRAGAN
-            beta = torch.rand_like(a)
+            beta = torch.rand_like(a, device=device)
             b = a + 0.5 * a.var().sqrt() * beta
-        alpha = torch.rand(a.size(0), 1, 1, 1)
+        alpha = torch.rand(a.size(0), 1, 1, 1, device=device)
         inter = a + alpha * (b - a)
         return inter
 
@@ -73,7 +74,7 @@ class AttGAN(pl.LightningModule):
         self.discriminators = Discriminators(**model_params)
 
         weights = torch.load(f"weights/inject{self.generator.inject_layers}.pth",
-                             "gpu" if torch.cuda.is_available() else "cpu")
+                             "cuda" if torch.cuda.is_available() else "cpu")
         self.generator.load_state_dict(weights)
 
         self.reconstruction_loss = torch.nn.L1Loss()
