@@ -1,8 +1,9 @@
 # Other stuff
 .idea
 .vscode
-data
-checkpoint
+data/**
+!data/list_attr_celeba.csv
+checkpoints
 lightning_logs
 weights
 
