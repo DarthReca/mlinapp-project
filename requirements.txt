@@ -5,3 +5,4 @@ rich
 torchmetrics
 torch-fidelity
 numpy
+comet-ml
