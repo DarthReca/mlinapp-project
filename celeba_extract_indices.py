@@ -9,7 +9,7 @@ def _get_args():
         "-d",
         "--data",
         type=str,
-        default="./data/list_attr_celeba.csv",
+        default="./list_attr_celeba.csv",
         help="the path of the csv containing the annotations)",
     )
     parser.add_argument(
