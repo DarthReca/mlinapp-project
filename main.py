@@ -2,7 +2,7 @@ import comet_ml as cml
 import pytorch_lightning as pl
 import neural_net
 import pytorch_lightning.callbacks as pl_call
-from lit_data_module import CelebADataModule
+from dataset.lit_data_module import CelebADataModule
 import pytorch_lightning.loggers as loggers
 
 
