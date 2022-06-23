@@ -5,6 +5,9 @@
 
 """AttGAN, generator, and discriminator."""
 
+import torch.optim as optim
+import torch.nn.functional as F
+import torch.autograd as autograd
 import torch
 import torch.nn as nn
 from .attgan_utils import LinearBlock, Conv2dBlock, ConvTranspose2dBlock
@@ -96,7 +99,8 @@ class Generator(nn.Module):
         return zs
 
     def decode(self, zs, a):
-        a_tile = a.view(a.size(0), -1, 1, 1).repeat(1, 1, self.f_size, self.f_size)
+        a_tile = a.view(a.size(0), -1, 1, 1).repeat(1,
+                                                    1, self.f_size, self.f_size)
         z = torch.cat([zs[-1], a_tile], dim=1)
         for i, layer in enumerate(self.dec_layers):
             z = layer(z)
@@ -104,7 +108,8 @@ class Generator(nn.Module):
                 z = torch.cat([z, zs[len(self.dec_layers) - 2 - i]], dim=1)
             if self.inject_layers > i:
                 a_tile = a.view(a.size(0), -1, 1, 1).repeat(
-                    1, 1, self.f_size * 2 ** (i + 1), self.f_size * 2 ** (i + 1)
+                    1, 1, self.f_size *
+                    2 ** (i + 1), self.f_size * 2 ** (i + 1)
                 )
                 z = torch.cat([z, a_tile], dim=1)
         return z
@@ -175,11 +180,6 @@ class Discriminators(nn.Module):
         return self.fc_adv(h), self.fc_cls(h)
 
 
-import torch.autograd as autograd
-import torch.nn.functional as F
-import torch.optim as optim
-
-
 # multilabel_soft_margin_loss = sigmoid + binary_cross_entropy
 
 
@@ -228,8 +228,10 @@ class AttGAN:
             self.G = nn.DataParallel(self.G)
             self.D = nn.DataParallel(self.D)
 
-        self.optim_G = optim.Adam(self.G.parameters(), lr=args.lr, betas=args.betas)
-        self.optim_D = optim.Adam(self.D.parameters(), lr=args.lr, betas=args.betas)
+        self.optim_G = optim.Adam(
+            self.G.parameters(), lr=args.lr, betas=args.betas)
+        self.optim_D = optim.Adam(
+            self.D.parameters(), lr=args.lr, betas=args.betas)
 
     def set_lr(self, lr):
         for g in self.optim_G.param_groups:

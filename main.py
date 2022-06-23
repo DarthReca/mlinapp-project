@@ -10,14 +10,17 @@ def main():
     # Reproducibility
     pl.seed_everything(42, True)
     # Setup model and data
-    datamodule = CelebADataModule(8, num_workers=4, indices_file="indices_test.npy")
+    datamodule = CelebADataModule(
+        batch_size=8, num_workers=4, indices_file="indices_test.npy")
     model = neural_net.AttGAN(
-        {"n_attrs": 40, "inject_layers": 0}, {"lr": 0.0002, "betas": (0.5, 0.999)}, 23
+        {"n_attrs": 40, "inject_layers": 0}, {
+            "lr": 0.0002, "betas": (0.5, 0.999)}, 23
     )
     # Setup trainer
     callbacks = [
         pl_call.RichModelSummary(),
-        pl_call.EarlyStopping(monitor="generator_loss", patience=50, min_delta=0.001),
+        pl_call.EarlyStopping(monitor="generator_loss",
+                              patience=50, min_delta=0.001),
         pl_call.ModelCheckpoint(
             every_n_epochs=10,
             dirpath="checkpoints",

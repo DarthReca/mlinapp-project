@@ -110,15 +110,23 @@ class AttGAN(pl.LightningModule):
         if optimizer_idx == 0:
             for p in self.discriminators.parameters():
                 p.requires_grad = False
-
+            # 1) The input images pass thorugh the encoder part, producing the latent vector zs_a
             zs_a = self.generator(img, mode="enc")
+            # 2) The decoder gets as input the latent space and the conditioned attributes producing the fake image
             img_fake = self.generator(zs_a, att_b_, mode="dec")
+            # 3) The decoder gets as input the latent space and the original attributes reconstructing the original image
             img_recon = self.generator(zs_a, att_a_, mode="dec")
+            # 4) The discriminators (Discriminator and classifier) get as input the fake image and gives
+            #    as output the choice between real/fake and the attributes classified by the classifiers
             d_fake, dc_fake = self.discriminators(img_fake)
 
+            # Reconstruction loss
             r_loss = self.reconstruction_loss(img_recon, img)
+            # Attribute Classification constraint
             d_loss = self.discriminators_loss(dc_fake, desired_att.float())
-            a_loss = self.adversarial_loss(d_fake, torch.ones_like(d_fake))
+            # Adversarial loss (generator) -> how much the discriminator is been fooled predicting "real" when the images were actually fake
+            a_loss = self.adversarial_loss(d_fake, torch.ones_like(d_fake)) 
+            # Compute overall loss (generator)
             g_loss = (
                 a_loss
                 + self.hparams["lambda_gc"] * d_loss
@@ -132,15 +140,22 @@ class AttGAN(pl.LightningModule):
             for p in self.discriminators.parameters():
                 p.requires_grad = True
 
-            img_fake = self.generator(img, att_b_).detach()
+            # 1) The generator produces the fake images
+            img_fake = self.generator(img, att_b_,  mode="enc-dec").detach()
+            # 2) The discriminator gets as input the real images, saying if they are real/fake and predicting their attributes
             d_real, dc_real = self.discriminators(img)
+            # 3) The discriminator gets as input the fake images, saying if they are real/fake and predicting their attributes
             d_fake, dc_fake = self.discriminators(img_fake)
-
+            
+            # Compute the discriminator adversarial loss
             a_loss = self.adversarial_loss(
-                d_real, torch.ones_like(d_real)
-            ) + self.adversarial_loss(d_fake, torch.zeros_like(d_fake))
+                d_real, torch.ones_like(d_real) # saying that the d_real were supposed to be predicted as real
+            ) + self.adversarial_loss(d_fake, torch.zeros_like(d_fake)) # saying that the d_fake were supposed to be predicted as fake
+            # Compute the gradient penalty ??????????
             a_gp = gradient_penalty(self.discriminators, img)
+            # Compute the discriminaotor loss (of classified attributes)
             dc_loss = self.discriminators_loss(dc_real, att.float())
+            # Compute the overall loss
             d_loss = (
                 a_loss
                 + self.hparams["lambda_gp"] * a_gp
