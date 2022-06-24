@@ -4,6 +4,7 @@ import pytorch_lightning as pl
 import torch.optim
 from torch import autograd
 import torchmetrics as tm
+from torchmetrics.image.inception import InceptionScore
 
 from .attgan_parts import Discriminators, Generator
 
@@ -16,7 +17,9 @@ def extract_rgb(img: torch.Tensor) -> torch.Tensor:
 
 def gradient_penalty(f, real, fake=None):
     def interpolate(a, b=None):
-        device = torch.device('cuda:'+str(a.get_device()) if a.get_device()>=0 else 'cpu')
+        device = torch.device(
+            "cuda:" + str(a.get_device()) if a.get_device() >= 0 else "cpu"
+        )
         if b is None:  # interpolation in DRAGAN
             beta = torch.rand_like(a, device=device)
             b = a + 0.5 * a.var().sqrt() * beta
@@ -43,75 +46,116 @@ def gradient_penalty(f, real, fake=None):
 
 
 class AttGAN(pl.LightningModule):
-    """
-    Parameters
-    ----------
-    lambda_rec: float
-        Weight for reconstruction loss.
-    lambda_gp: float
-        Weight for gradient penalty.
-    lambda_dc: float
-        Weight for classification loss in discriminator training.
-    lambda_gc: float
-        Weight for classification loss in generator training.
-    """
-
-    def __init__(
-        self,
-        model_params: Dict[str, Any],
-        optimizers_params: Dict[str, Any],
-        target_attribute: int,
-        thres_int=1,
-        lambda_rec: float = 100.0,
-        lambda_gp: float = 10.0,
-        lambda_dc: float = 10.0,
-        lambda_gc: float = 1.0,
-    ):
+    def __init__(self, args):
         super().__init__()
         self.save_hyperparameters()
+        # Define the AttGan Generator
+        self.generator = Generator(
+            args.enc_dim,
+            args.enc_layers,
+            args.enc_norm,
+            args.enc_acti,
+            args.dec_dim,
+            args.dec_layers,
+            args.dec_norm,
+            args.dec_acti,
+            args.n_attrs,
+            args.shortcut_layers,
+            args.inject_layers,
+            args.img_size,
+        )
 
-        self.generator = Generator(**model_params)
-        self.discriminators = Discriminators(**model_params)
+        # Define the AttGan Discriminator
+        self.discriminators = Discriminators(
+            args.dis_dim,
+            args.dis_norm,
+            args.dis_acti,
+            args.dis_fc_dim,
+            args.dis_fc_norm,
+            args.dis_fc_acti,
+            args.dis_layers,
+            args.img_size,
+        )
 
-        weights = torch.load(f"weights/inject{self.generator.inject_layers}.pth",
-                             "cuda" if torch.cuda.is_available() else "cpu")
-        self.generator.load_state_dict(weights)
+        # Load the initial weights
+        weights = torch.load(
+            f"weights/inject{self.generator.inject_layers}.pth",
+            "cuda" if torch.cuda.is_available() else "cpu",
+        )
 
+        ##self.generator.load_state_dict(weights)
+
+        # Define the losses
         self.reconstruction_loss = torch.nn.L1Loss()
         self.adversarial_loss = torch.nn.BCEWithLogitsLoss()
         self.discriminators_loss = torch.nn.BCEWithLogitsLoss()
 
-        self.metrics = tm.MetricCollection([tm.image.InceptionScore()])
+        # Define weights of losses
+        self.lambda_rec = args.lambda_1  # Weight for reconstruction loss
+        self.lambda_gc  = args.lambda_2 # Weight for classification loss in generator training.
+        self.lambda_dc  = args.lambda_3 # Weight for classification loss in discriminator training.
+        self.lambda_gp  = args.lambda_gp  # Weight for gradient penalty.
+
+        # Define optimizer hyperparameters
+        self.lr = args.lr
+        self.betas = args.betas
+
+        # Define metrics
+        self.metrics = tm.MetricCollection([InceptionScore()])
+
+        # Define target attribute index
+        self.target_attribute_index = args.target_attr_index
+        self.thres_int = args.thres_int
+        
+        # Define b distribution
+        self.b_distribution = args.b_distribution 
 
     def configure_optimizers(self):
         gen_optim = torch.optim.Adam(
-            self.generator.parameters(), **self.hparams["optimizers_params"]
+            self.generator.parameters(), lr=self.lr, betas=self.betas
         )
         disc_optim = torch.optim.Adam(
-            self.discriminators.parameters(), **self.hparams["optimizers_params"]
+            self.discriminators.parameters(), lr=self.lr, betas=self.betas
         )
         return gen_optim, disc_optim
 
     def training_step(
         self, batch, batch_idx: int, optimizer_idx: int
     ) -> Dict[str, float]:
-        img, att = batch
 
-        idx = torch.randperm(len(att))
-        desired_att = att[idx].contiguous()
-        att_a_ = (att * 2 - 1) * self.hparams["thres_int"]
-        att_b_ = (
-            (desired_att * 2 - 1)
-            * torch.rand_like(desired_att.float())
-            * (2 * self.hparams["thres_int"])
-        )
+        # 1 batch of images with associated labels (with values 0/1)
+        img_a, att_a = batch
+
+        permuted_indexes = torch.randperm(len(att_a))
+        att_b = att_a[permuted_indexes].contiguous() # desired attributes
+        
+        att_b = att_b.type(torch.float)
+        att_a = att_a.type(torch.float)
+        
+        att_a_ = (att_a * 2 - 1) * self.thres_int # att_a shifted to -0.5,0.5
+        
+
+        
+        if self.b_distribution == 'none':
+            att_b_ = (att_b * 2 - 1) * self.thres_int
+        
+        if self.b_distribution == 'uniform':
+            att_b_ = (att_b * 2 - 1) * \
+                     torch.rand_like(att_b) * \
+                     (2 * self.thres_int)
+        
+        if self.b_distribution == 'truncated_normal':
+            att_b_ = (att_b * 2 - 1) * \
+                     (torch.fmod(torch.randn_like(att_b), 2) + 2) / 4.0 * \
+                     (2 * self.thres_int)
+
 
         # Train generator
         if optimizer_idx == 0:
             for p in self.discriminators.parameters():
                 p.requires_grad = False
             # 1) The input images pass thorugh the encoder part, producing the latent vector zs_a
-            zs_a = self.generator(img, mode="enc")
+            zs_a = self.generator(img_a, mode="enc")
             # 2) The decoder gets as input the latent space and the conditioned attributes producing the fake image
             img_fake = self.generator(zs_a, att_b_, mode="dec")
             # 3) The decoder gets as input the latent space and the original attributes reconstructing the original image
@@ -121,17 +165,13 @@ class AttGAN(pl.LightningModule):
             d_fake, dc_fake = self.discriminators(img_fake)
 
             # Reconstruction loss
-            r_loss = self.reconstruction_loss(img_recon, img)
+            r_loss = self.reconstruction_loss(img_recon, img_a)
             # Attribute Classification constraint
-            d_loss = self.discriminators_loss(dc_fake, desired_att.float())
+            d_loss = self.discriminators_loss(dc_fake, att_b.float())
             # Adversarial loss (generator) -> how much the discriminator is been fooled predicting "real" when the images were actually fake
-            a_loss = self.adversarial_loss(d_fake, torch.ones_like(d_fake)) 
+            a_loss = self.adversarial_loss(d_fake, torch.ones_like(d_fake))
             # Compute overall loss (generator)
-            g_loss = (
-                a_loss
-                + self.hparams["lambda_gc"] * d_loss
-                + self.hparams["lambda_rec"] * r_loss
-            )
+            g_loss = a_loss + self.lambda_gc * d_loss + self.lambda_rec * r_loss
             self.log("generator_loss", g_loss)
             return g_loss
 
@@ -141,26 +181,27 @@ class AttGAN(pl.LightningModule):
                 p.requires_grad = True
 
             # 1) The generator produces the fake images
-            img_fake = self.generator(img, att_b_,  mode="enc-dec").detach()
+            img_fake = self.generator(img_a, att_b_, mode="enc-dec").detach()
             # 2) The discriminator gets as input the real images, saying if they are real/fake and predicting their attributes
-            d_real, dc_real = self.discriminators(img)
+            d_real, dc_real = self.discriminators(img_a)
             # 3) The discriminator gets as input the fake images, saying if they are real/fake and predicting their attributes
             d_fake, dc_fake = self.discriminators(img_fake)
-            
+
             # Compute the discriminator adversarial loss
             a_loss = self.adversarial_loss(
-                d_real, torch.ones_like(d_real) # saying that the d_real were supposed to be predicted as real
-            ) + self.adversarial_loss(d_fake, torch.zeros_like(d_fake)) # saying that the d_fake were supposed to be predicted as fake
+                d_real,
+                torch.ones_like(
+                    d_real
+                ),  # saying that the d_real were supposed to be predicted as real
+            ) + self.adversarial_loss(
+                d_fake, torch.zeros_like(d_fake)
+            )  # saying that the d_fake were supposed to be predicted as fake
             # Compute the gradient penalty ??????????
-            a_gp = gradient_penalty(self.discriminators, img)
+            a_gp = gradient_penalty(self.discriminators, img_a)
             # Compute the discriminaotor loss (of classified attributes)
-            dc_loss = self.discriminators_loss(dc_real, att.float())
+            dc_loss = self.discriminators_loss(dc_real, att_a)
             # Compute the overall loss
-            d_loss = (
-                a_loss
-                + self.hparams["lambda_gp"] * a_gp
-                + self.hparams["lambda_dc"] * dc_loss
-            )
+            d_loss = a_loss + self.lambda_gp * a_gp + self.lambda_dc * dc_loss
             self.log("discriminator_loss", d_loss)
             return d_loss
 
@@ -168,7 +209,7 @@ class AttGAN(pl.LightningModule):
         img, att = batch
 
         target = torch.zeros_like(att)
-        target[:, self.hparams["target_attribute"]] = 1
+        target[:, self.target_attribute_index] = 1
 
         fake = (self.generator(img, target) * 255).round().byte()
         self.metrics.update(fake)

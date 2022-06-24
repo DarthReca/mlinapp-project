@@ -10,10 +10,21 @@ import numpy as np
 
 class CelebADataModule(LightningDataModule):
     def __init__(
-        self, batch_size: int, num_workers: int = 4, indices_file: Optional[str] = None
+        self,
+        batch_size: int,
+        num_workers: int = 4,
+        image_size: int = 128,
+        indices_file: Optional[str] = None,
     ):
         super().__init__()
-        self.transform = T.Compose([T.CenterCrop(size=128), T.ToTensor()])
+        self.transform = T.Compose(
+            [
+                T.CenterCrop(170),
+                T.Resize(image_size),
+                T.ToTensor(),
+                T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            ]
+        )
         self.val_dataset = None
         self.train_dataset = None
         self.test_dataset = None
@@ -47,6 +58,7 @@ class CelebADataModule(LightningDataModule):
             num_workers=self.num_workers,
             batch_size=self.batch_size,
             shuffle=True,
+            drop_last=True,
         )
 
     def val_dataloader(self):
@@ -55,12 +67,10 @@ class CelebADataModule(LightningDataModule):
             num_workers=self.num_workers,
             batch_size=self.batch_size,
             shuffle=False,
+            drop_last=True,
         )
 
     def test_dataloader(self):
         return DataLoader(
-            self.test_dataset,
-            num_workers=self.num_workers,
-            batch_size=self.batch_size,
-            shuffle=False,
+            self.test_dataset, num_workers=self.num_workers, batch_size=1, shuffle=False
         )
