@@ -4,7 +4,7 @@
 data/**
 !data/list_attr_celeba.csv
 !data/list_attr_small.txt
-!data/small_dataset
+!data/small_dataset/
 checkpoints
 lightning_logs
 weights
