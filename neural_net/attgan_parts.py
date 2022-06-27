@@ -41,6 +41,8 @@ class Generator(nn.Module):
 
         layers = []
         n_in = 3
+        
+        # Setup encoder layers
         for i in range(enc_layers):
             n_out = min(enc_dim * 2**i, MAX_DIM)
             layers += [
@@ -50,13 +52,15 @@ class Generator(nn.Module):
                     (4, 4),
                     stride=2,
                     padding=1,
-                    norm_fn=enc_norm_fn,
-                    acti_fn=enc_acti_fn,
+                    norm_fn=enc_norm_fn, #batch normalization
+                    acti_fn=enc_acti_fn, #leaky relu
                 )
             ]
             n_in = n_out
+            
         self.enc_layers = nn.ModuleList(layers)
 
+        # Setup decoder layers
         layers = []
         n_in = n_in + n_attrs  # 1024 + 13
         for i in range(dec_layers):
@@ -74,9 +78,10 @@ class Generator(nn.Module):
                     )
                 ]
                 n_in = n_out
+                # concatenate the output of the corresponding encoder if there is a shortcut layer
                 n_in = n_in + n_in // 2 if self.shortcut_layers > i else n_in
                 n_in = n_in + n_attrs if self.inject_layers > i else n_in
-            else:
+            else: # last layer
                 layers += [
                     ConvTranspose2dBlock(
                         n_in,
@@ -91,20 +96,32 @@ class Generator(nn.Module):
         self.dec_layers = nn.ModuleList(layers)
 
     def encode(self, x):
+        '''
+        x: input data
+        '''
         z = x
-        zs = []
+        zs = [] 
         for layer in self.enc_layers:
             z = layer(z)
             zs.append(z)
-        return zs
+        return zs # array of outputs of the enc layers
 
     def decode(self, zs, a):
+        '''
+        zs: array. Each element i contains the output of the encoder layer i
+        a: conditioned attributes
+        '''
         a_tile = a.view(a.size(0), -1, 1, 1).repeat(1, 1, self.f_size, self.f_size)
-        z = torch.cat([zs[-1], a_tile], dim=1)
+        
+        z = torch.cat([zs[-1], a_tile], dim=1) #zs[-1] is the output of the last layer of the encoder
+        
         for i, layer in enumerate(self.dec_layers):
-            z = layer(z)
+            
+            z = layer(z) # pass through the i_th layer of the decoder
+            
             if self.shortcut_layers > i:  # Concat 1024 with 512
-                z = torch.cat([z, zs[len(self.dec_layers) - 2 - i]], dim=1)
+                z = torch.cat([z, zs[len(self.dec_layers) - 2 - i]], dim=1) # Concatenate with the given encoder layer result if there is a shortcut
+            
             if self.inject_layers > i:
                 a_tile = a.view(a.size(0), -1, 1, 1).repeat(
                     1, 1, self.f_size * 2 ** (i + 1), self.f_size * 2 ** (i + 1)
@@ -113,6 +130,11 @@ class Generator(nn.Module):
         return z
 
     def forward(self, x, a=None, mode="enc-dec"):
+        '''
+        x: input data
+        a: conditioned attributes
+        mode: ["enc", "dec", "enc-dec"]
+        '''
         if mode == "enc-dec":
             assert a is not None, "No given attribute."
             return self.decode(self.encode(x), a)
