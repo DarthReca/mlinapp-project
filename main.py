@@ -25,7 +25,7 @@ def parse(args=None):
     parser.add_argument('--data', dest='data', type=str, default='CelebA')
     parser.add_argument('--img_size', dest='img_size', type=int, default=128)
     # Paths
-    parser.add_argument('--data_path', dest='data_path', type=str, default='data/small') #'data/img_align_celeba'
+    parser.add_argument('--data_path', dest='data_path', type=str, default='data/small_dataset') #'data/img_align_celeba'
     parser.add_argument('--attr_path', dest='attr_path', type=str, default='data/list_attr_small.txt') #'data/list_attr_celeba.txt'
     
     parser.add_argument('--indices_path', dest='indices_path', type=str, default='dataset/indices_test.npy', help='numpy file with indices of the considered images during training') 
@@ -96,7 +96,9 @@ def main():
     
     # Setup data module
     datamodule = CelebADataModule(
-        batch_size=args.batch_size, num_workers=args.num_workers, image_size=args.img_size, indices_file=args.indices_path
+        selected_attrs=attrs_default,
+        batch_size=args.batch_size, num_workers=args.num_workers, image_size=args.img_size, indices_file=args.indices_path, 
+        data_path= args.data_path, attr_path=args.attr_path
     )
     
     # Setup model
@@ -124,7 +126,7 @@ def main():
         callbacks=callbacks,
         logger=logger,
         num_sanity_val_steps=0,
-        val_check_interval = 5,
+        val_check_interval = 1,
         log_every_n_steps=5,
         max_epochs=args.epochs,
     )
