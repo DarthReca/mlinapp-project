@@ -166,14 +166,18 @@ def main():
     # Setup trainer
     callbacks = [
         pl_call.RichModelSummary(),
-        pl_call.EarlyStopping(monitor="generator_loss", patience=50, min_delta=0.001),
+        pl_call.EarlyStopping(
+            monitor="generator_loss", patience=2, min_delta=0.001, verbose=True
+        ),
         pl_call.ModelCheckpoint(
             every_n_epochs=11,
             dirpath="checkpoints",
             monitor="generator_loss",
             save_top_k=2,
+            verbose=True,
         ),
         pl_call.LearningRateMonitor(logging_interval="epoch"),
+        pl_call.Timer("00:01:50:00")
     ]
     # Setup Comet logger
     logger = loggers.CometLogger(
@@ -185,7 +189,7 @@ def main():
         callbacks=callbacks,
         logger=logger,
         num_sanity_val_steps=0,
-        check_val_every_n_epoch=10,
+        check_val_every_n_epoch=1,
         log_every_n_steps=20,
         max_epochs=args.epochs,
     )
