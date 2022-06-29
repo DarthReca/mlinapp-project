@@ -124,12 +124,7 @@ class CelebADataModule(LightningDataModule):
 class FilteredCelebA(torchvision.datasets.CelebA):
     def __init__(self, split, transform, selected_attrs):
         super().__init__("data", split=split, transform=transform)
-        att_list = (
-            open("data/celeba/list_attr_celeba.txt", "r", encoding="utf-8")
-            .readlines()[1]
-            .split()
-        )
-        self.selected_attrs = [att_list.index(att) for att in selected_attrs]
+        self.selected_attrs = [self.attr_names.index(att) for att in selected_attrs]
 
     def __getitem__(self, index):
         img, attr = super().__getitem__(index)
