@@ -109,7 +109,7 @@ def main():
         pl_call.RichModelSummary(),
         pl_call.EarlyStopping(monitor="generator_loss", patience=50, min_delta=0.001),
         pl_call.ModelCheckpoint(
-            every_n_epochs=10,
+            every_n_epochs=11,
             dirpath="checkpoints",
             monitor="generator_loss",
             save_top_k=5,
@@ -126,8 +126,8 @@ def main():
         callbacks=callbacks,
         logger=logger,
         num_sanity_val_steps=0,
-        val_check_interval = 1,
-        log_every_n_steps=5,
+        check_val_every_n_epoch=10,
+        log_every_n_steps=20,
         max_epochs=args.epochs,
     )
     # Train

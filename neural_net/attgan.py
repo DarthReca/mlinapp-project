@@ -129,8 +129,8 @@ class AttGAN(pl.LightningModule):
         permuted_indexes = torch.randperm(len(att_a))
         att_b = att_a[permuted_indexes].contiguous() # desired attributes
         
-        att_b = att_b.type(torch.float)
-        att_a = att_a.type(torch.float)
+        att_b = att_b.float()
+        att_a = att_a.float()
         
         att_a_ = (att_a * 2 - 1) * self.thres_int # att_a shifted to -0.5,0.5
         
