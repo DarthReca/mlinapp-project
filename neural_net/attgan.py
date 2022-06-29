@@ -83,7 +83,10 @@ class AttGAN(pl.LightningModule):
             "cuda" if torch.cuda.is_available() else "cpu",
         )
 
-        ##self.generator.load_state_dict(weights)
+        try:
+            self.generator.load_state_dict(weights)
+        except RuntimeError:
+            self.generator.load_state_dict(weights["G"])
 
         # Define the losses
         self.reconstruction_loss = torch.nn.L1Loss()
@@ -92,9 +95,13 @@ class AttGAN(pl.LightningModule):
 
         # Define weights of losses
         self.lambda_rec = args.lambda_1  # Weight for reconstruction loss
-        self.lambda_gc  = args.lambda_2 # Weight for classification loss in generator training.
-        self.lambda_dc  = args.lambda_3 # Weight for classification loss in discriminator training.
-        self.lambda_gp  = args.lambda_gp  # Weight for gradient penalty.
+        self.lambda_gc = (
+            args.lambda_2
+        )  # Weight for classification loss in generator training.
+        self.lambda_dc = (
+            args.lambda_3
+        )  # Weight for classification loss in discriminator training.
+        self.lambda_gp = args.lambda_gp  # Weight for gradient penalty.
 
         # Define optimizer hyperparameters
         self.lr = args.lr
@@ -106,9 +113,9 @@ class AttGAN(pl.LightningModule):
         # Define target attribute index
         self.target_attribute_index = args.target_attr_index
         self.thres_int = args.thres_int
-        
+
         # Define b distribution
-        self.b_distribution = args.b_distribution 
+        self.b_distribution = args.b_distribution
 
     def configure_optimizers(self):
         gen_optim = torch.optim.Adam(
@@ -127,28 +134,26 @@ class AttGAN(pl.LightningModule):
         img_a, att_a = batch
 
         permuted_indexes = torch.randperm(len(att_a))
-        att_b = att_a[permuted_indexes].contiguous() # desired attributes
-        
+        att_b = att_a[permuted_indexes].contiguous()  # desired attributes
+
         att_b = att_b.float()
         att_a = att_a.float()
-        
-        att_a_ = (att_a * 2 - 1) * self.thres_int # att_a shifted to -0.5,0.5
-        
 
-        
-        if self.b_distribution == 'none':
+        att_a_ = (att_a * 2 - 1) * self.thres_int  # att_a shifted to -0.5,0.5
+
+        if self.b_distribution == "none":
             att_b_ = (att_b * 2 - 1) * self.thres_int
-        
-        if self.b_distribution == 'uniform':
-            att_b_ = (att_b * 2 - 1) * \
-                     torch.rand_like(att_b) * \
-                     (2 * self.thres_int)
-        
-        if self.b_distribution == 'truncated_normal':
-            att_b_ = (att_b * 2 - 1) * \
-                     (torch.fmod(torch.randn_like(att_b), 2) + 2) / 4.0 * \
-                     (2 * self.thres_int)
 
+        if self.b_distribution == "uniform":
+            att_b_ = (att_b * 2 - 1) * torch.rand_like(att_b) * (2 * self.thres_int)
+
+        if self.b_distribution == "truncated_normal":
+            att_b_ = (
+                (att_b * 2 - 1)
+                * (torch.fmod(torch.randn_like(att_b), 2) + 2)
+                / 4.0
+                * (2 * self.thres_int)
+            )
 
         # Train generator
         if optimizer_idx == 0:
