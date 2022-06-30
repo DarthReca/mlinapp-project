@@ -168,7 +168,7 @@ def main():
         pl_call.RichModelSummary(),
         pl_call.RichProgressBar(),
         pl_call.EarlyStopping(
-            monitor="generator_loss", patience=2, min_delta=0.001, verbose=True
+            monitor="generator_loss", patience=20, min_delta=0.001, verbose=True
         ),
         pl_call.ModelCheckpoint(
             every_n_epochs=3,

@@ -218,9 +218,9 @@ class AttGAN(pl.LightningModule):
 
         fake = (self.generator(img, target) * 255).round().byte()
         self.metrics.update(fake)
-        for im in fake:
+        for i, im in enumerate(fake):
             self.logger.experiment.log_image(
-                im, step=self.global_step, image_channels="first"
+                im.cpu(), step=self.global_step, image_channels="first", image_name=f"Image-{i}"
             )
 
     def validation_epoch_end(self, output) -> None:

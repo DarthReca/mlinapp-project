@@ -110,7 +110,7 @@ class CelebADataModule(LightningDataModule):
         return DataLoader(
             self.val_dataset,
             num_workers=self.num_workers,
-            batch_size=self.batch_size,
+            batch_size=len(self.val_dataset),
             shuffle=False,
             drop_last=True,
         )
