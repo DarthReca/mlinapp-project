@@ -166,11 +166,12 @@ def main():
     # Setup trainer
     callbacks = [
         pl_call.RichModelSummary(),
+        pl_call.RichProgressBar(),
         pl_call.EarlyStopping(
             monitor="generator_loss", patience=2, min_delta=0.001, verbose=True
         ),
         pl_call.ModelCheckpoint(
-            every_n_epochs=11,
+            every_n_epochs=3,
             dirpath="checkpoints",
             monitor="generator_loss",
             save_top_k=2,

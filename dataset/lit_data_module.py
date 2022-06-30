@@ -67,7 +67,7 @@ class CelebADataModule(LightningDataModule):
             self.test_dataset = (
                 FilteredCelebA("test", self.transform, self.selected_attrs),
             )
-
+        print(f"Training dataset is {len(self.train_dataset)} length. Validation samples are {len(self.val_dataset)}")
         """
             ### Use custom CelebA dataset class
             if stage == "fit" or stage is None:
