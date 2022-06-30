@@ -220,7 +220,7 @@ class AttGAN(pl.LightningModule):
         self.metrics.update(fake)
         for i, im in enumerate(fake):
             self.logger.experiment.log_image(
-                im.cpu(), step=self.global_step, image_channels="first", image_name=f"Image-{i}"
+                im.cpu(), step=self.global_step, image_channels="first", name=f"Image-{i}"
             )
 
     def validation_epoch_end(self, output) -> None:
