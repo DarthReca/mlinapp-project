@@ -160,7 +160,7 @@ class AttGAN(pl.LightningModule):
         if optimizer_idx == 0:
             for p in self.discriminators.parameters():
                 p.requires_grad = False
-            # 1) The input images pass thorugh the encoder part, producing the latent vector embedding_zs_a
+            # 1) The input images pass through the encoder part, producing the latent vector embedding_zs_a
             embedding_zs_a = self.generator(orig_images_a, mode="enc")
             # 2) The decoder gets as input the latent space and the conditioned attributes producing the fake image
             fake_images = self.generator(embedding_zs_a, shifted_fake_attributes_b_tilde, mode="dec")
@@ -205,7 +205,7 @@ class AttGAN(pl.LightningModule):
             )  # saying that the fakes_discrimination were supposed to be predicted as fake
             # Compute the gradient penalty ??????????
             a_gp = gradient_penalty(self.discriminators, orig_images_a)
-            # Compute the discriminaotor loss (of classified attributes)
+            # Compute the discriminator loss (of classified attributes)
             dc_loss = self.discriminators_loss(reals_classification, orig_attributes_a)
             # Compute the overall loss
             d_loss = a_loss + self.lambda_gp * a_gp + self.lambda_dc * dc_loss
