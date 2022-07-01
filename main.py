@@ -118,6 +118,7 @@ def parse(args=None):
     )
 
     # Saving params
+    parser.add_argument("--upload_weights", dest="upload_weights", action="store_true")
     parser.add_argument("--save_interval", dest="save_interval", type=int, default=1000)
     parser.add_argument(
         "--sample_interval",
@@ -171,14 +172,14 @@ def main():
             monitor="generator_loss", patience=20, min_delta=0.001, verbose=True
         ),
         pl_call.ModelCheckpoint(
-            every_n_epochs=3,
+            every_n_epochs=2,
             dirpath="checkpoints",
             monitor="generator_loss",
             save_top_k=2,
             verbose=True,
         ),
         pl_call.LearningRateMonitor(logging_interval="epoch"),
-        pl_call.Timer("00:01:50:00")
+        #pl_call.Timer("00:01:50:00")
     ]
     # Setup Comet logger
     logger = loggers.CometLogger(
@@ -197,9 +198,10 @@ def main():
     # Train
     trainer.fit(model, datamodule=datamodule)
     # Ending
-    logger.experiment.log_model(
-        "Best model", trainer.checkpoint_callback.best_model_path
-    )
+    if args.upload_weights:
+        logger.experiment.log_model(
+            "Best model", trainer.checkpoint_callback.best_model_path
+        )
     logger.experiment.end()
 
 

@@ -131,50 +131,72 @@ class AttGAN(pl.LightningModule):
     ) -> Dict[str, float]:
 
         # 1 batch of images with associated labels (with values 0/1)
-        img_a, att_a = batch
+        orig_images_a, orig_attributes_a = batch
 
-        permuted_indexes = torch.randperm(len(att_a))
-        att_b = att_a[permuted_indexes].contiguous()  # desired attributes
+        permuted_indexes = torch.randperm(len(orig_attributes_a))
+        fake_attributes_b = orig_attributes_a[
+            permuted_indexes
+        ].contiguous()  # fake attributes
 
-        att_b = att_b.float()
-        att_a = att_a.float()
+        fake_attributes_b = fake_attributes_b.float()
+        orig_attributes_a = orig_attributes_a.float()
 
-        att_a_ = (att_a * 2 - 1) * self.thres_int  # att_a shifted to -0.5,0.5
+        shifted_orig_attributes_a_tilde = (
+            orig_attributes_a * 2 - 1
+        ) * self.thres_int  # orig_attributes_a shifted to -0.5,0.5
 
         if self.b_distribution == "none":
-            att_b_ = (att_b * 2 - 1) * self.thres_int
+            shifted_fake_attributes_b_tilde = (
+                fake_attributes_b * 2 - 1
+            ) * self.thres_int
 
         if self.b_distribution == "uniform":
-            att_b_ = (att_b * 2 - 1) * torch.rand_like(att_b) * (2 * self.thres_int)
+            shifted_fake_attributes_b_tilde = (
+                (fake_attributes_b * 2 - 1)
+                * torch.rand_like(fake_attributes_b)
+                * (2 * self.thres_int)
+            )
 
         if self.b_distribution == "truncated_normal":
-            att_b_ = (
-                (att_b * 2 - 1)
-                * (torch.fmod(torch.randn_like(att_b), 2) + 2)
+            shifted_fake_attributes_b_tilde = (
+                (fake_attributes_b * 2 - 1)
+                * (torch.fmod(torch.randn_like(fake_attributes_b), 2) + 2)
                 / 4.0
                 * (2 * self.thres_int)
             )
 
+        # ! when is optimizer_idx updated?
         # Train generator
         if optimizer_idx == 0:
             for p in self.discriminators.parameters():
                 p.requires_grad = False
-            # 1) The input images pass thorugh the encoder part, producing the latent vector zs_a
-            zs_a = self.generator(img_a, mode="enc")
+            # 1) The input images pass through the encoder part, producing the latent vector embedding_zs_a
+            embedding_zs_a = self.generator(orig_images_a, mode="enc")
             # 2) The decoder gets as input the latent space and the conditioned attributes producing the fake image
-            img_fake = self.generator(zs_a, att_b_, mode="dec")
-            # 3) The decoder gets as input the latent space and the original attributes reconstructing the original image
-            img_recon = self.generator(zs_a, att_a_, mode="dec")
+            fake_images = self.generator(
+                embedding_zs_a, shifted_fake_attributes_b_tilde, mode="dec"
+            )
+            # 3) The decoder gets as input the latent space and the orig attributes reconstructing the orig image
+            reconstructed_images = self.generator(
+                embedding_zs_a, shifted_orig_attributes_a_tilde, mode="dec"
+            )
             # 4) The discriminators (Discriminator and classifier) get as input the fake image and gives
             #    as output the choice between real/fake and the attributes classified by the classifiers
-            d_fake, dc_fake = self.discriminators(img_fake)
+            fakes_discrimination, fakes_classification = self.discriminators(
+                fake_images
+            )
 
             # Reconstruction loss
-            r_loss = self.reconstruction_loss(img_recon, img_a)
+            r_loss = self.reconstruction_loss(reconstructed_images, orig_images_a)
+            self.log("reconstruction_loss", r_loss)
             # Attribute Classification constraint
-            d_loss = self.discriminators_loss(dc_fake, att_b.float())
+            d_loss = self.discriminators_loss(
+                fakes_classification, fake_attributes_b.float()
+            )
             # Adversarial loss (generator) -> how much the discriminator is been fooled predicting "real" when the images were actually fake
-            a_loss = self.adversarial_loss(d_fake, torch.ones_like(d_fake))
+            a_loss = self.adversarial_loss(
+                fakes_discrimination, torch.ones_like(fakes_discrimination)
+            )
             # Compute overall loss (generator)
             g_loss = a_loss + self.lambda_gc * d_loss + self.lambda_rec * r_loss
             self.log("generator_loss", g_loss)
@@ -186,34 +208,41 @@ class AttGAN(pl.LightningModule):
                 p.requires_grad = True
 
             # 1) The generator produces the fake images
-            img_fake = self.generator(img_a, att_b_, mode="enc-dec").detach()
+            fake_images = self.generator(
+                orig_images_a, shifted_fake_attributes_b_tilde, mode="enc-dec"
+            ).detach()
             # 2) The discriminator gets as input the real images, saying if they are real/fake and predicting their attributes
-            d_real, dc_real = self.discriminators(img_a)
+            reals_discrimination, reals_classification = self.discriminators(
+                orig_images_a
+            )
             # 3) The discriminator gets as input the fake images, saying if they are real/fake and predicting their attributes
-            d_fake, dc_fake = self.discriminators(img_fake)
+            fakes_discrimination, fakes_classification = self.discriminators(
+                fake_images
+            )
 
             # Compute the discriminator adversarial loss
             a_loss = self.adversarial_loss(
-                d_real,
+                reals_discrimination,
                 torch.ones_like(
-                    d_real
-                ),  # saying that the d_real were supposed to be predicted as real
+                    reals_discrimination
+                ),  # saying that the reals_discrimination were supposed to be predicted as real
             ) + self.adversarial_loss(
-                d_fake, torch.zeros_like(d_fake)
-            )  # saying that the d_fake were supposed to be predicted as fake
+                fakes_discrimination, torch.zeros_like(fakes_discrimination)
+            )  # saying that the fakes_discrimination were supposed to be predicted as fake
             # Compute the gradient penalty ??????????
-            a_gp = gradient_penalty(self.discriminators, img_a)
-            # Compute the discriminaotor loss (of classified attributes)
-            dc_loss = self.discriminators_loss(dc_real, att_a)
+            a_gp = gradient_penalty(self.discriminators, orig_images_a)
+            # Compute the discriminator loss (of classified attributes)
+            dc_loss = self.discriminators_loss(reals_classification, orig_attributes_a)
             # Compute the overall loss
             d_loss = a_loss + self.lambda_gp * a_gp + self.lambda_dc * dc_loss
             self.log("discriminator_loss", d_loss)
             return d_loss
 
     def validation_step(self, batch, batch_idx: int):
-        img, att = batch
+        # TODO set no_beard to 0 ?
+        orig_images, orig_attributes = batch
 
-        target = torch.zeros_like(att)
+        target = torch.zeros_like(orig_attributes)
         target[:, self.target_attribute_index] = 1
 
         fake = self.generator(img, target)
@@ -227,7 +256,10 @@ class AttGAN(pl.LightningModule):
         self.metrics.update(fake)
         for i, (im, orig) in enumerate(zip(fake, img)):
             self.logger.experiment.log_image(
-                torch.cat([orig.cpu(), im.cpu()], dim=2), step=self.global_step, image_channels="first", name=f"Image-{i}"
+                torch.cat([orig.cpu(), im.cpu()], dim=2),
+                step=self.global_step,
+                image_channels="first",
+                name=f"Image-{i}",
             )
 
     def validation_epoch_end(self, output) -> None:
@@ -240,7 +272,10 @@ class AttGAN(pl.LightningModule):
         self.metrics.reset()
 
     def test_step(self, batch, batch_idx: int):
-        img, att = batch
-        target = torch.zeros_like(att)
-        target[0] = 1
-        out = self.generator(img, target)
+        # TODO set no_beard to 0 ?
+        orig_images, orig_attributes = batch
+
+        target = torch.zeros_like(orig_attributes)
+        target[:, self.target_attribute_index] = 1
+
+        out = self.generator(orig_images, target)
