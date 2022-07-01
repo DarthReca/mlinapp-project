@@ -171,6 +171,7 @@ class AttGAN(pl.LightningModule):
 
             # Reconstruction loss
             r_loss = self.reconstruction_loss(img_recon, img_a)
+            self.log("reconstruction_loss", r_loss)
             # Attribute Classification constraint
             d_loss = self.discriminators_loss(dc_fake, att_b.float())
             # Adversarial loss (generator) -> how much the discriminator is been fooled predicting "real" when the images were actually fake
@@ -211,6 +212,7 @@ class AttGAN(pl.LightningModule):
             return d_loss
 
     def validation_step(self, batch, batch_idx: int):
+        # TODO set no_beard to 0 ?
         img, att = batch
 
         target = torch.zeros_like(att)
@@ -232,7 +234,10 @@ class AttGAN(pl.LightningModule):
                 self.log(k, v)
 
     def test_step(self, batch, batch_idx: int):
+        # TODO set no_beard to 0 ?
         img, att = batch
+        
         target = torch.zeros_like(att)
-        target[0] = 1
+        target[:, self.target_attribute_index] = 1
+        
         out = self.generator(img, target)
