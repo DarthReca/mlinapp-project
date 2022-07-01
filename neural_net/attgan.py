@@ -216,11 +216,18 @@ class AttGAN(pl.LightningModule):
         target = torch.zeros_like(att)
         target[:, self.target_attribute_index] = 1
 
-        fake = (self.generator(img, target) * 255).round().byte()
+        fake = self.generator(img, target)
+
+        fake = fake.clamp_(-1, 1).sub_(-1).div(2)
+        fake = (fake * 255).round().byte()
+
+        img = img.clamp_(-1, 1).sub_(-1).div(2)
+        img = (img * 255).round().byte()
+
         self.metrics.update(fake)
-        for i, im in enumerate(fake):
+        for i, (im, orig) in enumerate(zip(fake, img)):
             self.logger.experiment.log_image(
-                im.cpu(), step=self.global_step, image_channels="first", name=f"Image-{i}"
+                torch.cat([orig.cpu(), im.cpu()], dim=2), step=self.global_step, image_channels="first", name=f"Image-{i}"
             )
 
     def validation_epoch_end(self, output) -> None:
@@ -230,6 +237,7 @@ class AttGAN(pl.LightningModule):
                     self.log(k + f"_{i}", single)
             else:
                 self.log(k, v)
+        self.metrics.reset()
 
     def test_step(self, batch, batch_idx: int):
         img, att = batch
