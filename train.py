@@ -146,21 +146,11 @@ def parse_args():
     parser.add_argument("--beta1", dest="beta1", type=float, default=0.5)
     parser.add_argument("--beta2", dest="beta2", type=float, default=0.999)
     parser.add_argument(
-        "--n_d", dest="n_d", type=int, default=5, help="# of d updates per g update"
+        "--dg_ratio", dest="dg_ratio", type=int, default=5, help="# of d updates per g update"
     )
     parser.add_argument("--no_pretrained",
                         dest="no_pretrained", action="store_true")
 
-    # how to redistribute attributes during generic training
-    parser.add_argument(
-        "--b_distribution",
-        dest="b_distribution",
-        default="none",
-        choices=["none", "uniform", "truncated_normal"],
-    )
-    parser.add_argument("--thres_int", dest="thres_int",
-                        type=float, default=0.5)
-    parser.add_argument("--test_int", dest="test_int", type=float, default=1.0)
     # how many images to infer during validation steps
     parser.add_argument(
         "--val_samples", dest="val_samples", type=int, default=12, help="number of sample images in validation"
