@@ -201,6 +201,11 @@ def main():
         raise SystemExit
     args.betas = (args.beta1, args.beta2)
 
+    # Setting useful experiment name
+    args.experiment_name = "_".join([args.training_approach, f"dg{args.dg_ratio}", "50k" if args.indices_path ==
+                                    "data/chosen_indices.npy" else "25k", f"shortcut{args.shortcut_layers}"])
+
+    ######
     print("Training on the following attributes")
     print(args.attrs_list)
 
@@ -233,7 +238,7 @@ def main():
             every_n_epochs=1,
             dirpath="checkpoints",
             monitor="generator_loss",
-            save_top_k=2,
+            save_top_k=1,
             verbose=True,
         ),
         pl_call.LearningRateMonitor(logging_interval="epoch")
