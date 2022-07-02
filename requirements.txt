@@ -5,6 +5,7 @@ rich
 torchmetrics
 torch-fidelity
 numpy
+scipy
 comet-ml
 pandas
 seaborn

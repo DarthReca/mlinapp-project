@@ -5,6 +5,7 @@ import torch.optim
 from torch import autograd
 import torchmetrics as tm
 from torchmetrics.image.inception import InceptionScore
+from torchmetrics.image.fid import FrechetInceptionDistance
 
 from .attgan_parts import Discriminators, Generator
 
@@ -61,8 +62,7 @@ class AttGAN(pl.LightningModule):
             args.dec_acti,
             args.n_attrs,
             args.shortcut_layers,
-            args.inject_layers,
-            args.img_size,
+            args.img_size
         )
 
         # Define the AttGan Discriminator
@@ -136,11 +136,13 @@ class AttGAN(pl.LightningModule):
         # 1 batch of images with associated labels (with values 0/1)
         orig_images_a, orig_attributes_a = batch
 
-        # check how attributes should be conditioned
+        # define how attributes should be conditioned
         if self.training_approach == "mustache":
-            fake_attributes_b = orig_attributes_a.detach().clone()
-            fake_attributes_b[:, self.target_attribute_index] = 1   # Set Mustache (should have index 9) to 1
-            fake_attributes_b[:, self.target_attribute_index+1] = 0     # Set No_Beard (should have index 10) to 0
+            fake_attributes_b = orig_attributes_a.clone().detach()
+            # Set Mustache (should have index 9) to 1
+            fake_attributes_b[:, self.target_attribute_index] = 1
+            # Set No_Beard (should have index 10) to 0
+            fake_attributes_b[:, self.target_attribute_index+1] = 0
         else:
             permuted_indexes = torch.randperm(len(orig_attributes_a))
             fake_attributes_b = orig_attributes_a[
@@ -150,29 +152,33 @@ class AttGAN(pl.LightningModule):
         fake_attributes_b = fake_attributes_b.float()
         orig_attributes_a = orig_attributes_a.float()
 
-        shifted_orig_attributes_a_tilde = (
-            orig_attributes_a * 2 - 1
-        ) * self.thres_int  # orig_attributes_a shifted to -0.5,0.5
+        if self.training_approach == "mustache":
+            shifted_orig_attributes_a_tilde = orig_attributes_a
+            shifted_fake_attributes_b_tilde = fake_attributes_b
+        else:
+            shifted_orig_attributes_a_tilde = (
+                orig_attributes_a * 2 - 1
+            ) * self.thres_int  # orig_attributes_a shifted to -0.5,0.5
 
-        if self.b_distribution == "none":
-            shifted_fake_attributes_b_tilde = (
-                fake_attributes_b * 2 - 1
-            ) * self.thres_int
+            if self.b_distribution == "none":
+                shifted_fake_attributes_b_tilde = (
+                    fake_attributes_b * 2 - 1
+                ) * self.thres_int
 
-        if self.b_distribution == "uniform":
-            shifted_fake_attributes_b_tilde = (
-                (fake_attributes_b * 2 - 1)
-                * torch.rand_like(fake_attributes_b)
-                * (2 * self.thres_int)
-            )
+            if self.b_distribution == "uniform":
+                shifted_fake_attributes_b_tilde = (
+                    (fake_attributes_b * 2 - 1)
+                    * torch.rand_like(fake_attributes_b)
+                    * (2 * self.thres_int)
+                )
 
-        if self.b_distribution == "truncated_normal":
-            shifted_fake_attributes_b_tilde = (
-                (fake_attributes_b * 2 - 1)
-                * (torch.fmod(torch.randn_like(fake_attributes_b), 2) + 2)
-                / 4.0
-                * (2 * self.thres_int)
-            )
+            if self.b_distribution == "truncated_normal":
+                shifted_fake_attributes_b_tilde = (
+                    (fake_attributes_b * 2 - 1)
+                    * (torch.fmod(torch.randn_like(fake_attributes_b), 2) + 2)
+                    / 4.0
+                    * (2 * self.thres_int)
+                )
 
         # Train generator
         if optimizer_idx == 0:
@@ -195,7 +201,8 @@ class AttGAN(pl.LightningModule):
             )
 
             # Reconstruction loss
-            r_loss = self.reconstruction_loss(reconstructed_images, orig_images_a)
+            r_loss = self.reconstruction_loss(
+                reconstructed_images, orig_images_a)
             self.log("reconstruction_loss", r_loss)
             # Attribute Classification constraint
             d_loss = self.discriminators_loss(
@@ -240,13 +247,15 @@ class AttGAN(pl.LightningModule):
             # Compute the gradient penalty ??????????
             a_gp = gradient_penalty(self.discriminators, orig_images_a)
             # Compute the discriminator loss (of classified attributes)
-            dc_loss = self.discriminators_loss(reals_classification, orig_attributes_a)
+            dc_loss = self.discriminators_loss(
+                reals_classification, orig_attributes_a)
             # Compute the overall loss
             d_loss = a_loss + self.lambda_gp * a_gp + self.lambda_dc * dc_loss
             self.log("discriminator_loss", d_loss)
             return d_loss
 
     def validation_step(self, batch, batch_idx: int):
+        # this is mustache-specific!
         orig_images, orig_attributes = batch
 
         target = orig_attributes.clone().detach()
@@ -280,6 +289,7 @@ class AttGAN(pl.LightningModule):
         self.metrics.reset()
 
     def test_step(self, batch, batch_idx: int):
+        # this is mustache-specific!
         orig_images, orig_attributes = batch
 
         target = orig_attributes.clone().detach()

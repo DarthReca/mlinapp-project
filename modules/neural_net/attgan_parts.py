@@ -30,13 +30,12 @@ class Generator(nn.Module):
         dec_acti_fn="relu",
         n_attrs=13,
         shortcut_layers=1,
-        inject_layers=0,
         img_size=128,
         **kwargs
     ):
         super(Generator, self).__init__()
         self.shortcut_layers = min(shortcut_layers, dec_layers - 1)
-        self.inject_layers = min(inject_layers, dec_layers - 1)
+        self.inject_layers = 0
         self.f_size = img_size // 2**enc_layers  # f_size = 4 for 128x128
 
         layers = []
