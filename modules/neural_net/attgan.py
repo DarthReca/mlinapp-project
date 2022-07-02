@@ -249,7 +249,7 @@ class AttGAN(pl.LightningModule):
     def validation_step(self, batch, batch_idx: int):
         orig_images, orig_attributes = batch
 
-        target = torch.zeros_like(orig_attributes)
+        target = orig_attributes.clone().detach()
         target[:, self.target_attribute_index] = 1
         target[:, self.target_attribute_index+1] = 0
 
@@ -282,7 +282,7 @@ class AttGAN(pl.LightningModule):
     def test_step(self, batch, batch_idx: int):
         orig_images, orig_attributes = batch
 
-        target = torch.zeros_like(orig_attributes)
+        target = orig_attributes.clone().detach()
         target[:, self.target_attribute_index] = 1
         target[:, self.target_attribute_index+1] = 0
 
