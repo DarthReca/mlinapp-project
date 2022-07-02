@@ -11,3 +11,9 @@
 ## Dataset
 
 CelebA: https://www.dropbox.com/s/ydfwka7plnrd7dz/img_align_celeba.zip
+
+## Environment
+
+```bash
+python setup_env.py
+```

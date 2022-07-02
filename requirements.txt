@@ -6,3 +6,6 @@ torchmetrics
 torch-fidelity
 numpy
 comet-ml
+pandas
+seaborn
+matplotlib

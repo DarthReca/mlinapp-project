@@ -1,13 +1,12 @@
-# Other stuff
-.idea
-.vscode
-data/**
-!data/list_attr_celeba.csv
-!data/list_attr_small.txt
-!data/small_dataset/*
-checkpoints
-lightning_logs
-weights
+# Project-specific stuff
+.idea/**
+.vscode/**
+data/celeba/**
+!data/celeba/put_img_align_celeba_zip_here
+weights/**
+!weights/put_pretrained_pth_here
+checkpoints/**
+lightning_logs/**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

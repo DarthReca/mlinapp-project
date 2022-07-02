@@ -1,1 +1,0 @@
-from .attgan import AttGAN

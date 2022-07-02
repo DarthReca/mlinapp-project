@@ -1,9 +1,9 @@
 import datetime
 import comet_ml as cml
 import pytorch_lightning as pl
-import neural_net
 import pytorch_lightning.callbacks as pl_call
-from dataset.lit_data_module import CelebADataModule
+from modules.neural_net.attgan import AttGAN
+from modules.dataset.celeba_data_module import CelebADataModule
 import pytorch_lightning.loggers as loggers
 import argparse
 
@@ -55,7 +55,7 @@ def parse(args=None):
         "--indices_path",
         dest="indices_path",
         type=str,
-        default="dataset/indices_test.npy",
+        default="data/chosen_indices.npy",
         help="numpy file with indices of the considered images during training",
     )
 
@@ -90,11 +90,13 @@ def parse(args=None):
 
     # Training
     parser.add_argument(
-        "--epochs", dest="epochs", type=int, default=200, help="# of epochs"
+        "--epochs", dest="epochs", type=int, default=20, help="# of epochs"
     )
-    parser.add_argument("--batch_size", dest="batch_size", type=int, default=5)  # 32
+    parser.add_argument("--batch_size", dest="batch_size", type=int, default=32)
     parser.add_argument("--num_workers", dest="num_workers", type=int, default=0)
-
+    parser.add_argument(
+        "--training-approach", dest="training_approach", default="mustache", choices=["mustache", "generic"]
+    )
     parser.add_argument(
         "--lr", dest="lr", type=float, default=0.0002, help="learning rate"
     )
@@ -103,6 +105,7 @@ def parse(args=None):
     parser.add_argument(
         "--n_d", dest="n_d", type=int, default=5, help="# of d updates per g update"
     )
+    parser.add_argument("--no-pretrained", dest="no_pretrained", action="store_true")
 
     parser.add_argument(
         "--b_distribution",
@@ -142,17 +145,15 @@ def main():
     # Get arguments
     args = parse()
 
-    args.lr_base = args.lr
+    args.n_attrs = len(args.attrs)
     args.betas = (args.beta1, args.beta2)
-
-    args.n_attrs = len(args.attrs)  # 13 (default)
     args.target_attr_index = args.attrs.index(args.target_attr)
 
     # Reproducibility
     pl.seed_everything(42, True)
 
     # Setup data module
-    datamodule = CelebADataModule(
+    celeba_datamodule = CelebADataModule(
         selected_attrs=attrs_default,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
@@ -162,7 +163,7 @@ def main():
         attr_path=args.attr_path,
     )
     # Setup model
-    model = neural_net.AttGAN(args)
+    model = AttGAN(args)
 
     # Setup trainer
     callbacks = [
@@ -172,10 +173,10 @@ def main():
             monitor="generator_loss", patience=20, min_delta=0.001, verbose=True
         ),
         pl_call.ModelCheckpoint(
-            every_n_epochs=2,
+            every_n_epochs=1,
             dirpath="checkpoints",
             monitor="generator_loss",
-            save_top_k=2,
+            save_top_k=3,
             verbose=True,
         ),
         pl_call.LearningRateMonitor(logging_interval="epoch"),
@@ -192,11 +193,11 @@ def main():
         logger=logger,
         num_sanity_val_steps=0,
         check_val_every_n_epoch=1,
-        log_every_n_steps=20,
+        log_every_n_steps=50,
         max_epochs=args.epochs,
     )
     # Train
-    trainer.fit(model, datamodule=datamodule)
+    trainer.fit(model, datamodule=celeba_datamodule)
     # Ending
     if args.upload_weights:
         logger.experiment.log_model(

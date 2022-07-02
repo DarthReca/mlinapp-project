@@ -76,17 +76,17 @@ class AttGAN(pl.LightningModule):
             args.dis_layers,
             args.img_size,
         )
+        if not args.no_pretrained:
+            # Load the initial weights
+            weights = torch.load(
+                "weights/pretrained.pth",
+                "cuda" if torch.cuda.is_available() else "cpu",
+            )
 
-        # Load the initial weights
-        weights = torch.load(
-            f"weights/inject{self.generator.inject_layers}.pth",
-            "cuda" if torch.cuda.is_available() else "cpu",
-        )
-
-        try:
-            self.generator.load_state_dict(weights)
-        except RuntimeError:
-            self.generator.load_state_dict(weights["G"])
+            try:
+                self.generator.load_state_dict(weights)
+            except RuntimeError:
+                self.generator.load_state_dict(weights["G"])
 
         # Define the losses
         self.reconstruction_loss = torch.nn.L1Loss()
@@ -114,6 +114,9 @@ class AttGAN(pl.LightningModule):
         self.target_attribute_index = args.target_attr_index
         self.thres_int = args.thres_int
 
+        # Define training approach
+        self.training_approach = args.training_approach
+
         # Define b distribution
         self.b_distribution = args.b_distribution
 
@@ -133,10 +136,16 @@ class AttGAN(pl.LightningModule):
         # 1 batch of images with associated labels (with values 0/1)
         orig_images_a, orig_attributes_a = batch
 
-        permuted_indexes = torch.randperm(len(orig_attributes_a))
-        fake_attributes_b = orig_attributes_a[
-            permuted_indexes
-        ].contiguous()  # fake attributes
+        # check how attributes should be conditioned
+        if self.training_approach == "mustache":
+            fake_attributes_b = orig_attributes_a.detach().clone()
+            fake_attributes_b[:, self.target_attribute_index] = 1   # Set Mustache (should have index 9) to 1
+            fake_attributes_b[:, self.target_attribute_index+1] = 0     # Set No_Beard (should have index 10) to 0
+        else:
+            permuted_indexes = torch.randperm(len(orig_attributes_a))
+            fake_attributes_b = orig_attributes_a[
+                permuted_indexes
+            ].contiguous()  # fake attributes
 
         fake_attributes_b = fake_attributes_b.float()
         orig_attributes_a = orig_attributes_a.float()
@@ -165,7 +174,6 @@ class AttGAN(pl.LightningModule):
                 * (2 * self.thres_int)
             )
 
-        # ! when is optimizer_idx updated?
         # Train generator
         if optimizer_idx == 0:
             for p in self.discriminators.parameters():
@@ -239,22 +247,22 @@ class AttGAN(pl.LightningModule):
             return d_loss
 
     def validation_step(self, batch, batch_idx: int):
-        # TODO set no_beard to 0 ?
         orig_images, orig_attributes = batch
 
         target = torch.zeros_like(orig_attributes)
         target[:, self.target_attribute_index] = 1
+        target[:, self.target_attribute_index+1] = 0
 
-        fake = self.generator(img, target)
+        fake = self.generator(orig_images, target)
 
         fake = fake.clamp_(-1, 1).sub_(-1).div(2)
         fake = (fake * 255).round().byte()
 
-        img = img.clamp_(-1, 1).sub_(-1).div(2)
-        img = (img * 255).round().byte()
+        orig_images = orig_images.clamp_(-1, 1).sub_(-1).div(2)
+        orig_images = (orig_images * 255).round().byte()
 
         self.metrics.update(fake)
-        for i, (im, orig) in enumerate(zip(fake, img)):
+        for i, (im, orig) in enumerate(zip(fake, orig_images)):
             self.logger.experiment.log_image(
                 torch.cat([orig.cpu(), im.cpu()], dim=2),
                 step=self.global_step,
@@ -272,10 +280,10 @@ class AttGAN(pl.LightningModule):
         self.metrics.reset()
 
     def test_step(self, batch, batch_idx: int):
-        # TODO set no_beard to 0 ?
         orig_images, orig_attributes = batch
 
         target = torch.zeros_like(orig_attributes)
         target[:, self.target_attribute_index] = 1
+        target[:, self.target_attribute_index+1] = 0
 
         out = self.generator(orig_images, target)
