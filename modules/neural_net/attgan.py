@@ -12,7 +12,9 @@ from .attgan_parts import Discriminators, Generator
 # Tutorial: https://pytorch-lightning.readthedocs.io/en/stable/notebooks/lightning_examples/basic-gan.html
 
 
-def extract_rgb(img: torch.Tensor) -> torch.Tensor:
+def images_from_tensor(img: torch.Tensor) -> torch.Tensor:
+    img = img.clone().detach()
+    img = img.clamp_(-1, 1).sub_(-1).div(2)
     return (img * 255).round().byte()
 
 
@@ -108,17 +110,16 @@ class AttGAN(pl.LightningModule):
         self.betas = args.betas
 
         # Define metrics
-        self.metrics = tm.MetricCollection([InceptionScore()])
+        # self.metrics = tm.MetricCollection([InceptionScore()])
+        self.fid = FrechetInceptionDistance(
+            feature=64, reset_real_features=False)
 
         # Define target attribute index
         self.target_attribute_index = args.target_attr_index
-        self.thres_int = args.thres_int
 
         # Define training approach
         self.training_approach = args.training_approach
-
-        # Define b distribution
-        self.b_distribution = args.b_distribution
+        self.dg_ratio = args.dg_ratio
 
     def configure_optimizers(self):
         gen_optim = torch.optim.Adam(
@@ -127,7 +128,10 @@ class AttGAN(pl.LightningModule):
         disc_optim = torch.optim.Adam(
             self.discriminators.parameters(), lr=self.lr, betas=self.betas
         )
-        return gen_optim, disc_optim
+        return (
+            {'optimizer': gen_optim, 'frequency': 1},
+            {'optimizer': disc_optim, 'frequency': self.dg_ratio}
+        )
 
     def training_step(
         self, batch, batch_idx: int, optimizer_idx: int
@@ -136,13 +140,17 @@ class AttGAN(pl.LightningModule):
         # 1 batch of images with associated labels (with values 0/1)
         orig_images_a, orig_attributes_a = batch
 
+        orig_images = images_from_tensor(orig_images_a)
+        self.fid.update(orig_images, real=True)
+
         # define how attributes should be conditioned
         if self.training_approach == "mustache":
             fake_attributes_b = orig_attributes_a.clone().detach()
-            # Set Mustache (should have index 9) to 1
-            fake_attributes_b[:, self.target_attribute_index] = 1
-            # Set No_Beard (should have index 10) to 0
-            fake_attributes_b[:, self.target_attribute_index+1] = 0
+            # Invert Mustache and No_Beard
+            fake_attributes_b[:, self.target_attribute_index] = 0 if fake_attributes_b[:,
+                                                                                       self.target_attribute_index] else 1
+            fake_attributes_b[:, self.target_attribute_index +
+                              1] = 0 if fake_attributes_b[:, self.target_attribute_index+1] else 1
         else:
             permuted_indexes = torch.randperm(len(orig_attributes_a))
             fake_attributes_b = orig_attributes_a[
@@ -153,32 +161,17 @@ class AttGAN(pl.LightningModule):
         orig_attributes_a = orig_attributes_a.float()
 
         if self.training_approach == "mustache":
+            # TODO should we also shift to -0.5, 0.5 ?
             shifted_orig_attributes_a_tilde = orig_attributes_a
             shifted_fake_attributes_b_tilde = fake_attributes_b
         else:
             shifted_orig_attributes_a_tilde = (
                 orig_attributes_a * 2 - 1
-            ) * self.thres_int  # orig_attributes_a shifted to -0.5,0.5
+            ) * 0.5  # orig_attributes_a shifted to -0.5,0.5
 
-            if self.b_distribution == "none":
-                shifted_fake_attributes_b_tilde = (
-                    fake_attributes_b * 2 - 1
-                ) * self.thres_int
-
-            if self.b_distribution == "uniform":
-                shifted_fake_attributes_b_tilde = (
-                    (fake_attributes_b * 2 - 1)
-                    * torch.rand_like(fake_attributes_b)
-                    * (2 * self.thres_int)
-                )
-
-            if self.b_distribution == "truncated_normal":
-                shifted_fake_attributes_b_tilde = (
-                    (fake_attributes_b * 2 - 1)
-                    * (torch.fmod(torch.randn_like(fake_attributes_b), 2) + 2)
-                    / 4.0
-                    * (2 * self.thres_int)
-                )
+            shifted_fake_attributes_b_tilde = (
+                fake_attributes_b * 2 - 1
+            ) * 0.5  # orig_attributes_a shifted to -0.5,0.5
 
         # Train generator
         if optimizer_idx == 0:
@@ -264,13 +257,11 @@ class AttGAN(pl.LightningModule):
 
         fake = self.generator(orig_images, target)
 
-        fake = fake.clamp_(-1, 1).sub_(-1).div(2)
-        fake = (fake * 255).round().byte()
+        fake = images_from_tensor(fake)
+        orig_images = images_from_tensor(orig_images)
 
-        orig_images = orig_images.clamp_(-1, 1).sub_(-1).div(2)
-        orig_images = (orig_images * 255).round().byte()
-
-        self.metrics.update(fake)
+        #self.fid.update(orig_images, real=True)
+        self.fid.update(fake, real=False)
         for i, (im, orig) in enumerate(zip(fake, orig_images)):
             self.logger.experiment.log_image(
                 torch.cat([orig.cpu(), im.cpu()], dim=2),
@@ -280,13 +271,16 @@ class AttGAN(pl.LightningModule):
             )
 
     def validation_epoch_end(self, output) -> None:
-        for k, v in self.metrics.compute().items():
-            if isinstance(v, tuple):
-                for i, single in enumerate(v):
-                    self.log(k + f"_{i}", single)
-            else:
-                self.log(k, v)
-        self.metrics.reset()
+        # for k, v in self.metrics.compute().items():
+        #     if isinstance(v, tuple):
+        #         for i, single in enumerate(v):
+        #             self.log(k + f"_{i}", single)
+        #     else:
+        #         self.log(k, v)
+        # self.metrics.reset()
+
+        self.log("FID", self.fid.compute().item())
+        self.fid.reset()
 
     def test_step(self, batch, batch_idx: int):
         # this is mustache-specific!
