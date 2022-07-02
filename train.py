@@ -241,7 +241,7 @@ def main():
 
     # Setup Comet logger
     logger = loggers.CometLogger(
-        api_key="sB2qT71Uklji1EGNlkZ2WhuzL", project_name="mlinapp", experiment_name=args.experiment_name
+        api_key="TvZ83pu3DEe7ETHo5gOp49GAg", project_name="mlinapp-project", experiment_name=args.experiment_name
     )
 
     # Setup trainer
