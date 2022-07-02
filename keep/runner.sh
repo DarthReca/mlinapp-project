@@ -1,1 +1,1 @@
-python main.py --batch_size 64 --num_workers 6 --epochs 12 --indices_path dataset/indices_Mustache.npy --data_path 'data/img_align_celeba' --attr_path 'data/list_attr_celeba.txt'
+python train.py --batch_size 64 --num_workers 6 --epochs 3 --indices_path data/chosen_indices_smaller.npy

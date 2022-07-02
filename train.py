@@ -176,7 +176,7 @@ def main():
             every_n_epochs=1,
             dirpath="checkpoints",
             monitor="generator_loss",
-            save_top_k=3,
+            save_top_k=2,
             verbose=True,
         ),
         pl_call.LearningRateMonitor(logging_interval="epoch"),
