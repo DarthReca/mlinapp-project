@@ -131,10 +131,10 @@ def parse_args():
 
     # training stuff
     parser.add_argument(
-        "--epochs", dest="epochs", type=int, default=20, help="number of epochs"
+        "--epochs", dest="epochs", type=int, default=30, help="number of epochs"
     )
     parser.add_argument("--batch_size", dest="batch_size",
-                        type=int, default=32)
+                        type=int, default=64)
     parser.add_argument("--num_workers", dest="num_workers",
                         type=int, default=2)
     parser.add_argument(
@@ -172,7 +172,8 @@ def parse_args():
     parser.add_argument(
         "--experiment_name",
         dest="experiment_name",
-        default=datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
+        # default=datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
+        default=None
     )
 
     return parser.parse_args()
@@ -202,8 +203,10 @@ def main():
     args.betas = (args.beta1, args.beta2)
 
     # Setting useful experiment name
-    args.experiment_name = "_".join([args.training_approach, f"dg{args.dg_ratio}", "50k" if args.indices_path ==
-                                    "data/chosen_indices.npy" else "25k", f"shortcut{args.shortcut_layers}"])
+    if args.experiment_name is None:
+        args.experiment_name = "_".join([args.training_approach, f"dg{args.dg_ratio}", "50k" if args.indices_path ==
+                                         "data/chosen_indices.npy" else ("25k" if args.indices_path ==
+                                                                         "data/chosen_indices_smaller.npy" else "other"), f"shortcut{args.shortcut_layers}"])
 
     ######
     print("Training on the following attributes")
