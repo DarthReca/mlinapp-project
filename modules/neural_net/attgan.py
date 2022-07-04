@@ -82,13 +82,16 @@ class AttGAN(pl.LightningModule):
             # Load the initial weights
             weights = torch.load(
                 "weights/pretrained.pth",
-                "cuda" if torch.cuda.is_available() else "cpu",
+                "cuda" if (torch.cuda.is_available()
+                           and not args.force_cpu) else "cpu",
             )
 
             try:
                 self.generator.load_state_dict(weights)
+                print("Preloaded weights for the entire net")
             except RuntimeError:
                 self.generator.load_state_dict(weights["G"])
+                print("Preloaded weights for the generator only")
 
         # Define the losses
         self.reconstruction_loss = torch.nn.L1Loss()
@@ -146,11 +149,12 @@ class AttGAN(pl.LightningModule):
         # define how attributes should be conditioned
         if self.training_approach == "mustache":
             fake_attributes_b = orig_attributes_a.clone().detach()
-            # Invert Mustache and No_Beard
-            fake_attributes_b[:, self.target_attribute_index] = 0 if fake_attributes_b[:,
-                                                                                       self.target_attribute_index] else 1
-            fake_attributes_b[:, self.target_attribute_index +
-                              1] = 0 if fake_attributes_b[:, self.target_attribute_index+1] else 1
+            for atts in fake_attributes_b:
+                # Invert Mustache
+                atts[self.target_attribute_index] = 0 if atts[self.target_attribute_index] else 1
+                # and No_Beard?
+                # atts[self.target_attribute_index +
+                #      1] = 0 if atts[self.target_attribute_index+1] else 1
         else:
             permuted_indexes = torch.randperm(len(orig_attributes_a))
             fake_attributes_b = orig_attributes_a[
@@ -253,7 +257,7 @@ class AttGAN(pl.LightningModule):
 
         target = orig_attributes.clone().detach()
         target[:, self.target_attribute_index] = 1
-        target[:, self.target_attribute_index+1] = 0
+        #target[:, self.target_attribute_index+1] = 0
 
         fake = self.generator(orig_images, target)
 
@@ -288,6 +292,6 @@ class AttGAN(pl.LightningModule):
 
         target = orig_attributes.clone().detach()
         target[:, self.target_attribute_index] = 1
-        target[:, self.target_attribute_index+1] = 0
+        #target[:, self.target_attribute_index+1] = 0
 
         out = self.generator(orig_images, target)
