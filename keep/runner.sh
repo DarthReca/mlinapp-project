@@ -1,1 +1,0 @@
-python train.py --batch_size 64 --num_workers 6 --epochs 3 --indices_path data/chosen_indices_smaller.npy
