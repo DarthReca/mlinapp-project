@@ -240,6 +240,7 @@ def main():
         pl_call.ModelCheckpoint(
             every_n_epochs=1,
             dirpath="checkpoints",
+            filename='{epoch}-{step}-{generator_loss:.2f}',
             monitor="generator_loss",
             save_top_k=1,
             verbose=True,
