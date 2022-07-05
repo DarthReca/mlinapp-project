@@ -191,18 +191,14 @@ class AttGAN(pl.LightningModule):
         fake_attributes_b = fake_attributes_b.float()
         orig_attributes_a = orig_attributes_a.float()
 
-        if self.training_approach == "mustache":
-            # TODO should we also shift to -0.5, 0.5 ?
-            shifted_orig_attributes_a_tilde = orig_attributes_a
-            shifted_fake_attributes_b_tilde = fake_attributes_b
-        else:
-            shifted_orig_attributes_a_tilde = (
-                orig_attributes_a * 2 - 1
-            ) * 0.5  # orig_attributes_a shifted to -0.5,0.5
 
-            shifted_fake_attributes_b_tilde = (
-                fake_attributes_b * 2 - 1
-            ) * 0.5  # orig_attributes_a shifted to -0.5,0.5
+        shifted_orig_attributes_a_tilde = (
+            orig_attributes_a * 2 - 1
+        ) * 0.5  # orig_attributes_a shifted to -0.5,0.5
+
+        shifted_fake_attributes_b_tilde = (
+            fake_attributes_b * 2 - 1
+        ) * 0.5  # orig_attributes_a shifted to -0.5,0.5
 
         # Train generator
         if optimizer_idx == 0:
@@ -286,6 +282,11 @@ class AttGAN(pl.LightningModule):
         target[:, self.target_attribute_index] = 1
         #target[:, self.target_attribute_index+1] = 0
 
+        target = target.float()
+        target = (
+            target * 2 - 1
+        ) * 0.5  # target shifted to -0.5,0.5
+
         fake = self.generator(orig_images, target)
 
         fake = images_from_tensor(fake)
@@ -320,5 +321,10 @@ class AttGAN(pl.LightningModule):
         target = orig_attributes.clone().detach()
         target[:, self.target_attribute_index] = 1
         #target[:, self.target_attribute_index+1] = 0
+
+        target = target.float()
+        target = (
+            target * 2 - 1
+        ) * 0.5  # target shifted to -0.5,0.5
 
         out = self.generator(orig_images, target)
