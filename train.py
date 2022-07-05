@@ -165,7 +165,7 @@ def parse_args():
     parser.add_argument("--upload_weights",
                         dest="upload_weights", action="store_true", help="upload final weights to comet")
     parser.add_argument("--log_interval",
-                        dest="log_interval", type=int, default=50, help="number of steps between logs")
+                        dest="log_interval", type=int, default=30, help="number of steps between logs")
     parser.add_argument(
         "--val_interval",
         dest="val_interval",
@@ -233,7 +233,7 @@ def main():
 
     # Setup model
     if args.resume_from_path:
-        model = AttGAN.load_from_checkpoint(args.resume_from_path, args)
+        model = AttGAN.load_from_checkpoint(args.resume_from_path, args=args)
     else:
         model = AttGAN(args)
 
