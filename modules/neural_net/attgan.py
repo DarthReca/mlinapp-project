@@ -78,7 +78,7 @@ class AttGAN(pl.LightningModule):
             args.dis_layers,
             args.img_size,
         )
-        if not args.no_pretrained:
+        if (not args.no_pretrained) and (not args.resume_from_path):
             # Load the initial weights
             weights = torch.load(
                 "weights/pretrained.pth",
@@ -264,7 +264,7 @@ class AttGAN(pl.LightningModule):
             ) + self.adversarial_loss(
                 fakes_discrimination, torch.zeros_like(fakes_discrimination)
             )  # saying that the fakes_discrimination were supposed to be predicted as fake
-            # Compute the gradient penalty ??????????
+            # Compute the gradient penalty
             a_gp = gradient_penalty(self.discriminators, orig_images_a)
             # Compute the discriminator loss (of classified attributes)
             dc_loss = self.discriminators_loss(
