@@ -138,7 +138,7 @@ def parse_args():
     parser.add_argument("--num_workers", dest="num_workers",
                         type=int, default=2)
     parser.add_argument(
-        "--training_approach", dest="training_approach", default="mustache", choices=["mustache", "generic"]
+        "--training_approach", dest="training_approach", default="specific", choices=["specific", "generic"]
     )
     parser.add_argument(
         "--lr", dest="lr", type=float, default=0.0001, help="starting learning rate"

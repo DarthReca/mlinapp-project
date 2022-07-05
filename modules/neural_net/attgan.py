@@ -177,14 +177,11 @@ class AttGAN(pl.LightningModule):
         self.fid.update(orig_images, real=True)
 
         # define how attributes should be conditioned
-        if self.training_approach == "mustache":
+        if self.training_approach == "specific":
             fake_attributes_b = orig_attributes_a.clone().detach()
             for atts in fake_attributes_b:
-                # Invert Mustache
+                # Invert target attribute
                 atts[self.target_attribute_index] = 0 if atts[self.target_attribute_index] else 1
-                # and No_Beard?
-                # atts[self.target_attribute_index +
-                #      1] = 0 if atts[self.target_attribute_index+1] else 1
         else:
             permuted_indexes = torch.randperm(len(orig_attributes_a))
             fake_attributes_b = orig_attributes_a[
@@ -282,7 +279,7 @@ class AttGAN(pl.LightningModule):
             return d_loss
 
     def validation_step(self, batch, batch_idx: int):
-        # this is mustache-specific!
+        # this is target-specific!
         orig_images, orig_attributes = batch
 
         target = orig_attributes.clone().detach()
@@ -317,7 +314,7 @@ class AttGAN(pl.LightningModule):
         self.fid.reset()
 
     def test_step(self, batch, batch_idx: int):
-        # this is mustache-specific!
+        # this is target-specific!
         orig_images, orig_attributes = batch
 
         target = orig_attributes.clone().detach()
