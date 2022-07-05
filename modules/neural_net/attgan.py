@@ -83,11 +83,11 @@ class AttGAN(pl.LightningModule):
             weights = torch.load(
                 "weights/pretrained.pth",
                 "cuda" if (torch.cuda.is_available()
-                           and not args.force_cpu) else "cpu",
+                            and not args.force_cpu) else "cpu",
             )
 
             try:
-                self.generator.load_state_dict(weights)
+                self.load_state_dict(weights)
                 print("Preloaded weights for the entire net")
             except RuntimeError:
                 self.generator.load_state_dict(weights["G"])
@@ -116,6 +116,7 @@ class AttGAN(pl.LightningModule):
         # self.metrics = tm.MetricCollection([InceptionScore()])
         self.fid = FrechetInceptionDistance(
             feature=64, reset_real_features=False)
+        self.accuracy = tm.Accuracy()
 
         # Define target attribute index
         self.target_attribute_index = args.target_attr_index
@@ -256,19 +257,28 @@ class AttGAN(pl.LightningModule):
             )
 
             # Compute the discriminator adversarial loss
+            all_ones = torch.ones_like(reals_discrimination)
+            all_zeros = torch.zeros_like(fakes_discrimination)
+
+            # log discriminator accuracy metric
+            self.accuracy(torch.sigmoid(reals_discrimination), all_ones.int())
+            self.accuracy(torch.sigmoid(fakes_discrimination), all_zeros.int())
+            self.log('adversarial_accuracy', self.accuracy)
+
             a_loss = self.adversarial_loss(
                 reals_discrimination,
-                torch.ones_like(
-                    reals_discrimination
-                ),  # saying that the reals_discrimination were supposed to be predicted as real
+                all_ones,  # saying that the reals_discrimination were supposed to be predicted as real
             ) + self.adversarial_loss(
-                fakes_discrimination, torch.zeros_like(fakes_discrimination)
+                fakes_discrimination, all_zeros
             )  # saying that the fakes_discrimination were supposed to be predicted as fake
+
             # Compute the gradient penalty
             a_gp = gradient_penalty(self.discriminators, orig_images_a)
+
             # Compute the discriminator loss (of classified attributes)
             dc_loss = self.discriminators_loss(
                 reals_classification, orig_attributes_a)
+
             # Compute the overall loss
             d_loss = a_loss + self.lambda_gp * a_gp + self.lambda_dc * dc_loss
             self.log("discriminator_loss", d_loss)
