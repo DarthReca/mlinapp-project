@@ -150,18 +150,18 @@ class AttGAN(pl.LightningModule):
     ):
         # generator
         if optimizer_idx == 0:
-            gen_target_epoch = 800. # don't forget the dot here
-            if self.trainer.global_step < gen_target_epoch:
-                lr_scale = min(1., float(self.trainer.global_step + 1) / gen_target_epoch)
+            gen_target_step = 800. # don't forget the dot here
+            if self.trainer.global_step < gen_target_step:
+                lr_scale = min(1., float(self.trainer.global_step + 1) / gen_target_step)
                 for pg in optimizer.param_groups:
                     pg['lr'] = lr_scale * self.lr
             optimizer.step(closure=optimizer_closure)
 
         # discriminator
         if optimizer_idx == 1:
-            dis_target_epoch = 200. # don't forget the dot here
-            if self.trainer.global_step < dis_target_epoch:
-                lr_scale = min(1., float(self.trainer.global_step + 1) / dis_target_epoch)
+            dis_target_step = 200. # don't forget the dot here
+            if self.trainer.global_step < dis_target_step:
+                lr_scale = min(1., float(self.trainer.global_step + 1) / dis_target_step)
                 for pg in optimizer.param_groups:
                     pg['lr'] = lr_scale * self.lr
             optimizer.step(closure=optimizer_closure)
