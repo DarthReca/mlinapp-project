@@ -5,13 +5,16 @@ import os
 import os.path
 import urllib.request
 import pkg_resources
-
+import argparse
 
 errors = False
 missing_packages = False
 missing_dataset = True
 missing_weights = True
 
+parser = argparse.ArgumentParser()
+parser.add_argument("-y", "--yes_all", dest="yes_all", action="store_true")
+args = parser.parse_args()
 
 ######################################
 print('== Checking Python version ==')
@@ -40,7 +43,7 @@ with open("requirements.txt") as reqfile:
                 f"{bcolors.SUCCESS}Package '{package}' is already installed{bcolors.ENDC}")
 
 if missing_packages:
-    if utils.query_yes_no("Some packages are missing.\nWould you like to run 'pip install -r requirements.txt' now?", default=None):
+    if args.yes_all or utils.query_yes_no("Some packages are missing.\nWould you like to run 'pip install -r requirements.txt' now?", default=None):
         result = os.system("pip install -r requirements.txt")
         if result == 0:
             print(
@@ -60,7 +63,7 @@ if os.path.isfile("data/celeba/img_align_celeba.zip"):
     print(f"{bcolors.INFO}The dataset had already been downloaded{bcolors.ENDC}")
 else:
     print(f"{bcolors.WARNING}The dataset hasn't been downloaded yet{bcolors.ENDC}")
-    if utils.query_yes_no("Would you like to download the dataset now?", default=None):
+    if args.yes_all or utils.query_yes_no("Would you like to download the dataset now?", default=None):
         try:
             urllib.request.urlretrieve("https://www.dropbox.com/s/ydfwka7plnrd7dz/img_align_celeba.zip?dl=1",
                                        "data/celeba/img_align_celeba.zip", utils.reporthook)
@@ -86,7 +89,7 @@ if os.path.isfile("weights/pretrained.pth"):
     print(f"{bcolors.INFO}The pretrained weights had already been downloaded{bcolors.ENDC}")
 else:
     print(f"{bcolors.WARNING}The pretrained weights haven't been downloaded yet{bcolors.ENDC}")
-    if utils.query_yes_no("Would you like to download the weights now?", default=None):
+    if args.yes_all or utils.query_yes_no("Would you like to download the weights now?", default=None):
         try:
             urllib.request.urlretrieve(
                 "https://www.dropbox.com/s/44g36acwkxlsllw/inject0_orig.pth?dl=1", "weights/pretrained.pth", utils.reporthook)
