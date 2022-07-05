@@ -150,13 +150,18 @@ def parse_args():
     )
     parser.add_argument("--no_pretrained",
                         dest="no_pretrained", action="store_true")
+    parser.add_argument(
+        "--resume_from_path",
+        dest="resume_from_path",
+        default=None
+    )
 
     # how many images to infer during validation steps
     parser.add_argument(
         "--val_samples", dest="val_samples", type=int, default=12, help="number of sample images in validation"
     )
 
-    # saving state
+    # tracking
     parser.add_argument("--upload_weights",
                         dest="upload_weights", action="store_true", help="upload final weights to comet")
     parser.add_argument("--log_interval",
@@ -227,7 +232,10 @@ def main():
     )
 
     # Setup model
-    model = AttGAN(args)
+    if args.resume_from_path:
+        model = AttGAN.load_from_checkpoint(args.resume_from_path, args)
+    else:
+        model = AttGAN(args)
 
     # Setup trainer
     callbacks = [
