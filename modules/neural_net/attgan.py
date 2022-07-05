@@ -136,6 +136,34 @@ class AttGAN(pl.LightningModule):
             {'optimizer': disc_optim, 'frequency': self.dg_ratio}
         )
 
+    # LR warmup
+    def optimizer_step(
+        self,
+        epoch,
+        batch_idx,
+        optimizer,
+        optimizer_idx,
+        optimizer_closure,
+        on_tpu=False,
+        using_native_amp=False,
+        using_lbfgs=False,
+    ):
+        # generator
+        if optimizer_idx == 0:
+            if self.trainer.global_step < 750:
+                lr_scale = min(1., float(self.trainer.global_step + 1) / 500.)
+                for pg in optimizer.param_groups:
+                    pg['lr'] = lr_scale * self.lr
+            optimizer.step(closure=optimizer_closure)
+
+        # discriminator
+        if optimizer_idx == 1:
+            if self.trainer.global_step < 250:
+                lr_scale = min(1., float(self.trainer.global_step + 1) / 500.)
+                for pg in optimizer.param_groups:
+                    pg['lr'] = lr_scale * self.lr
+            optimizer.step(closure=optimizer_closure)
+
     def training_step(
         self, batch, batch_idx: int, optimizer_idx: int
     ) -> Dict[str, float]:
