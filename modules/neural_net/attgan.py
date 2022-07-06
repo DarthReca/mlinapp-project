@@ -279,6 +279,8 @@ class AttGAN(pl.LightningModule):
             dc_loss = self.discriminators_loss(
                 reals_classification, orig_attributes_a)
 
+            self.log("disc_classification_loss", d_loss)
+
             # Compute the overall loss
             d_loss = a_loss + self.lambda_gp * a_gp + self.lambda_dc * dc_loss
             self.log("discriminator_loss", d_loss)
