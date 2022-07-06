@@ -5,6 +5,7 @@ data/celeba/**
 !data/celeba/put_img_align_celeba_zip_here
 weights/**
 !weights/put_pretrained_pth_here
+!weights/extract_from_checkpoint.py
 checkpoints/**
 lightning_logs/**
 
