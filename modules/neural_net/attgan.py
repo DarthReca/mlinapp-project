@@ -123,9 +123,8 @@ class AttGAN(pl.LightningModule):
         self.training_approach = args.training_approach
         self.dg_ratio = args.dg_ratio
 
-        # FreezeD
-        for p in self.discriminators.conv[: args.freeze_layers].parameters():
-            p.requires_grad = False
+        # freezeD
+        self.freeze_layers = args.freeze_layers
 
     def configure_optimizers(self):
         gen_optim = torch.optim.Adam(
@@ -248,6 +247,9 @@ class AttGAN(pl.LightningModule):
         if optimizer_idx == 1:
             for p in self.discriminators.parameters():
                 p.requires_grad = True
+            # FreezeD
+            for p in self.discriminators.conv[: self.freeze_layers].parameters():
+                p.requires_grad = False
 
             # 1) The generator produces the fake images
             fake_images = self.generator(
