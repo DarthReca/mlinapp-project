@@ -113,7 +113,7 @@ class AttGAN(pl.LightningModule):
 
         # Define metrics
         # self.metrics = tm.MetricCollection([InceptionScore()])
-        # self.fid = FrechetInceptionDistance(feature=64, reset_real_features=False)
+        self.fid = FrechetInceptionDistance(feature=64, reset_real_features=False)
         self.accuracy = tm.Accuracy()
 
         # Define target attribute index
