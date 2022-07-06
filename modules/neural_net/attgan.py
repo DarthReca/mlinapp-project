@@ -1,11 +1,11 @@
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
 
 import pytorch_lightning as pl
 import torch.optim
-from torch import autograd
 import torchmetrics as tm
-from torchmetrics.image.inception import InceptionScore
+from torch import autograd
 from torchmetrics.image.fid import FrechetInceptionDistance
+from torchmetrics.image.inception import InceptionScore
 
 from .attgan_parts import Discriminators, Generator
 
@@ -64,7 +64,7 @@ class AttGAN(pl.LightningModule):
             args.dec_acti,
             args.n_attrs,
             args.shortcut_layers,
-            args.img_size
+            args.img_size,
         )
 
         # Define the AttGan Discriminator
@@ -82,8 +82,7 @@ class AttGAN(pl.LightningModule):
             # Load the initial weights
             weights = torch.load(
                 "weights/pretrained.pth",
-                "cuda" if (torch.cuda.is_available()
-                            and not args.force_cpu) else "cpu",
+                "cuda" if (torch.cuda.is_available() and not args.force_cpu) else "cpu",
             )
 
             try:
@@ -114,8 +113,7 @@ class AttGAN(pl.LightningModule):
 
         # Define metrics
         # self.metrics = tm.MetricCollection([InceptionScore()])
-        self.fid = FrechetInceptionDistance(
-            feature=64, reset_real_features=False)
+        # self.fid = FrechetInceptionDistance(feature=64, reset_real_features=False)
         self.accuracy = tm.Accuracy()
 
         # Define target attribute index
@@ -125,6 +123,10 @@ class AttGAN(pl.LightningModule):
         self.training_approach = args.training_approach
         self.dg_ratio = args.dg_ratio
 
+        # FreezeD
+        for p in self.discriminators.conv[: args.freeze_layers].parameters():
+            p.requires_grad = False
+
     def configure_optimizers(self):
         gen_optim = torch.optim.Adam(
             self.generator.parameters(), lr=self.lr, betas=self.betas
@@ -133,8 +135,8 @@ class AttGAN(pl.LightningModule):
             self.discriminators.parameters(), lr=self.lr, betas=self.betas
         )
         return (
-            {'optimizer': gen_optim, 'frequency': 1},
-            {'optimizer': disc_optim, 'frequency': self.dg_ratio}
+            {"optimizer": gen_optim, "frequency": 1},
+            {"optimizer": disc_optim, "frequency": self.dg_ratio},
         )
 
     # LR warmup
@@ -151,20 +153,24 @@ class AttGAN(pl.LightningModule):
     ):
         # generator
         if optimizer_idx == 0:
-            gen_target_step = 800. # don't forget the dot here
+            gen_target_step = 800.0  # don't forget the dot here
             if self.trainer.global_step < gen_target_step:
-                lr_scale = min(1., float(self.trainer.global_step + 1) / gen_target_step)
+                lr_scale = min(
+                    1.0, float(self.trainer.global_step + 1) / gen_target_step
+                )
                 for pg in optimizer.param_groups:
-                    pg['lr'] = lr_scale * self.lr
+                    pg["lr"] = lr_scale * self.lr
             optimizer.step(closure=optimizer_closure)
 
         # discriminator
         if optimizer_idx == 1:
-            dis_target_step = 200. # don't forget the dot here
+            dis_target_step = 200.0  # don't forget the dot here
             if self.trainer.global_step < dis_target_step:
-                lr_scale = min(1., float(self.trainer.global_step + 1) / dis_target_step)
+                lr_scale = min(
+                    1.0, float(self.trainer.global_step + 1) / dis_target_step
+                )
                 for pg in optimizer.param_groups:
-                    pg['lr'] = lr_scale * self.lr
+                    pg["lr"] = lr_scale * self.lr
             optimizer.step(closure=optimizer_closure)
 
     def training_step(
@@ -182,7 +188,9 @@ class AttGAN(pl.LightningModule):
             fake_attributes_b = orig_attributes_a.clone().detach()
             for atts in fake_attributes_b:
                 # Invert target attribute
-                atts[self.target_attribute_index] = 0 if atts[self.target_attribute_index] else 1
+                atts[self.target_attribute_index] = (
+                    0 if atts[self.target_attribute_index] else 1
+                )
         else:
             permuted_indexes = torch.randperm(len(orig_attributes_a))
             fake_attributes_b = orig_attributes_a[
@@ -191,7 +199,6 @@ class AttGAN(pl.LightningModule):
 
         fake_attributes_b = fake_attributes_b.float()
         orig_attributes_a = orig_attributes_a.float()
-
 
         shifted_orig_attributes_a_tilde = (
             orig_attributes_a * 2 - 1
@@ -222,8 +229,7 @@ class AttGAN(pl.LightningModule):
             )
 
             # Reconstruction loss
-            r_loss = self.reconstruction_loss(
-                reconstructed_images, orig_images_a)
+            r_loss = self.reconstruction_loss(reconstructed_images, orig_images_a)
             self.log("reconstruction_loss", r_loss)
             # Attribute Classification constraint
             d_loss = self.discriminators_loss(
@@ -263,7 +269,7 @@ class AttGAN(pl.LightningModule):
             # log discriminator accuracy metric
             self.accuracy(torch.sigmoid(reals_discrimination), all_ones.int())
             self.accuracy(torch.sigmoid(fakes_discrimination), all_zeros.int())
-            self.log('adversarial_accuracy', self.accuracy)
+            self.log("adversarial_accuracy", self.accuracy)
 
             a_loss = self.adversarial_loss(
                 reals_discrimination,
@@ -276,8 +282,7 @@ class AttGAN(pl.LightningModule):
             a_gp = gradient_penalty(self.discriminators, orig_images_a)
 
             # Compute the discriminator loss (of classified attributes)
-            dc_loss = self.discriminators_loss(
-                reals_classification, orig_attributes_a)
+            dc_loss = self.discriminators_loss(reals_classification, orig_attributes_a)
 
             self.log("disc_classification_loss", d_loss)
 
@@ -292,19 +297,17 @@ class AttGAN(pl.LightningModule):
 
         target = orig_attributes.clone().detach()
         target[:, self.target_attribute_index] = 1
-        #target[:, self.target_attribute_index+1] = 0
+        # target[:, self.target_attribute_index+1] = 0
 
         target = target.float()
-        target = (
-            target * 2 - 1
-        ) * 0.5  # target shifted to -0.5,0.5
+        target = (target * 2 - 1) * 0.5  # target shifted to -0.5,0.5
 
         fake = self.generator(orig_images, target)
 
         fake = images_from_tensor(fake)
         orig_images = images_from_tensor(orig_images)
 
-        #self.fid.update(orig_images, real=True)
+        # self.fid.update(orig_images, real=True)
         self.fid.update(fake, real=False)
         for i, (im, orig) in enumerate(zip(fake, orig_images)):
             self.logger.experiment.log_image(
@@ -332,11 +335,9 @@ class AttGAN(pl.LightningModule):
 
         target = orig_attributes.clone().detach()
         target[:, self.target_attribute_index] = 1
-        #target[:, self.target_attribute_index+1] = 0
+        # target[:, self.target_attribute_index+1] = 0
 
         target = target.float()
-        target = (
-            target * 2 - 1
-        ) * 0.5  # target shifted to -0.5,0.5
+        target = (target * 2 - 1) * 0.5  # target shifted to -0.5,0.5
 
         out = self.generator(orig_images, target)
