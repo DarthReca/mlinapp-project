@@ -157,6 +157,7 @@ def parse_args():
         default=5,
         help="# of d updates per g update",
     )
+    parser.add_argument('--mode', dest='mode', default='wgan', choices=['wgan', 'lsgan', 'dcgan'])
     parser.add_argument("--no_pretrained", dest="no_pretrained", action="store_true")
     parser.add_argument("--resume_from_path", dest="resume_from_path", default=None)
 

@@ -94,8 +94,10 @@ class AttGAN(pl.LightningModule):
 
         # Define the losses
         self.reconstruction_loss = torch.nn.L1Loss()
-        self.adversarial_loss = torch.nn.BCEWithLogitsLoss()
         self.discriminators_loss = torch.nn.BCEWithLogitsLoss()
+
+        # Define GAN training mode
+        self.mode = args.mode
 
         # Define weights of losses
         self.lambda_rec = args.lambda_1  # Weight for reconstruction loss
@@ -236,9 +238,13 @@ class AttGAN(pl.LightningModule):
                 fakes_classification, fake_attributes_b.float()
             )
             # Adversarial loss (generator) -> how much the discriminator is been fooled predicting "real" when the images were actually fake
-            a_loss = self.adversarial_loss(
-                fakes_discrimination, torch.ones_like(fakes_discrimination)
-            )
+            if self.mode == 'wgan':
+                a_loss = -fakes_discrimination.mean()
+            if self.mode == 'lsgan':  # mean_squared_error
+                a_loss = torch.nn.MSELoss(fakes_discrimination, torch.ones_like(fakes_discrimination))
+            if self.mode == 'dcgan':  # sigmoid_cross_entropy
+                a_loss = torch.nn.BCEWithLogitsLoss(fakes_discrimination, torch.ones_like(fakes_discrimination))
+            
             # Compute overall loss (generator)
             g_loss = a_loss + self.lambda_gc * d_loss + self.lambda_rec * r_loss
             self.log("generator_loss", g_loss)
@@ -271,15 +277,26 @@ class AttGAN(pl.LightningModule):
             self.accuracy(torch.sigmoid(fakes_discrimination), all_zeros.int())
             self.log("adversarial_accuracy", self.accuracy)
 
-            a_loss = self.adversarial_loss(
-                reals_discrimination,
-                all_ones,  # saying that the reals_discrimination were supposed to be predicted as real
-            ) + self.adversarial_loss(
-                fakes_discrimination, all_zeros
-            )  # saying that the fakes_discrimination were supposed to be predicted as fake
-
-            # Compute the gradient penalty
-            a_gp = gradient_penalty(self.discriminators, orig_images_a)
+            # adversarial loss
+            if self.mode == 'wgan':
+                wd = reals_discrimination.mean() - fakes_discrimination.mean()
+                a_loss = -wd
+                # Compute the gradient penalty
+                a_gp = gradient_penalty(self.discriminators, orig_images_a, fake_images)
+            
+            if self.mode == 'lsgan':  # mean_squared_error
+                a_loss = torch.nn.MSELoss(reals_discrimination, torch.ones_like(fakes_discrimination)) + \
+                        torch.nn.MSELoss(fakes_discrimination, torch.zeros_like(fakes_discrimination))
+                # Compute the gradient penalty
+                a_gp = gradient_penalty(self.discriminators, orig_images_a)
+            
+            if self.mode == 'dcgan':  # sigmoid_cross_entropy
+                a_loss = torch.nn.BCEWithLogitsLoss(reals_discrimination, torch.ones_like(reals_discrimination)) + \
+                        torch.nn.BCEWithLogitsLoss(fakes_discrimination, torch.zeros_like(fakes_discrimination))
+                # Compute the gradient penalty
+                a_gp = gradient_penalty(self.discriminators, orig_images_a)
+            
+            
 
             # Compute the discriminator loss (of classified attributes)
             dc_loss = self.discriminators_loss(reals_classification, orig_attributes_a)
