@@ -23,4 +23,4 @@ module load nvidia/cudasdk/11.6
 source ~/.bashrc
 conda activate mlinapp
 
-python train.py --training_approach="specific" --epochs=30 --batch_size=128 --num_workers=4 --indices_path="data/eyeglasses_only.npy" --experiment_name="trying eyeglasses only dg3" --target_attr="Eyeglasses" --dg_ratio=1 --upload_weights --max_time "00:00:32:00" --freeze 4
+python train.py --training_approach="specific" --epochs=30 --batch_size=128 --num_workers=4 --indices_path="data/eyeglasses_only.npy" --experiment_name="trying eyeglasses only dg3" --target_attr="Eyeglasses" --dg_ratio=1 --upload_weights --max_time "00:00:32:00" --freeze 2
