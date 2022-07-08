@@ -1,11 +1,11 @@
 from typing import Optional
 
-import torch
-from torch.utils.data import DataLoader, Subset
-import torchvision
-from pytorch_lightning import LightningDataModule
-import torchvision.transforms as T
 import numpy as np
+import torch
+import torchvision
+import torchvision.transforms as T
+from pytorch_lightning import LightningDataModule
+from torch.utils.data import DataLoader, Subset
 
 
 class CelebADataModule(LightningDataModule):
@@ -17,7 +17,7 @@ class CelebADataModule(LightningDataModule):
         img_size: int = 128,
         indices_file: Optional[str] = None,
         data_root: str = "data",
-        num_val_samples: int = 10
+        num_val_samples: int = 10,
     ):
         super().__init__()
         self.transform = T.Compose(
@@ -40,15 +40,15 @@ class CelebADataModule(LightningDataModule):
         self.data_root = data_root
 
     def prepare_data(self) -> None:
-        torchvision.datasets.CelebA(
-            root=self.data_root, split="all", download=True)
+        torchvision.datasets.CelebA(root=self.data_root, split="all", download=True)
 
     def setup(self, stage: Optional[str] = None) -> None:
         if stage == "fit" or stage is None:
             if self.chosen_indices is not None:
                 self.train_dataset = Subset(
-                    FilteredCelebA("all", self.transform,
-                                   self.selected_attrs, self.data_root),
+                    FilteredCelebA(
+                        "all", self.transform, self.selected_attrs, self.data_root
+                    ),
                     self.chosen_indices,
                 )
             else:
@@ -56,17 +56,20 @@ class CelebADataModule(LightningDataModule):
                     self.data_root, split="train", transform=self.transform
                 )
             self.val_dataset = Subset(
-                FilteredCelebA("valid", self.transform,
-                               self.selected_attrs, self.data_root),
+                FilteredCelebA(
+                    "valid", self.transform, self.selected_attrs, self.data_root
+                ),
                 torch.arange(self.num_val_samples),
             )
         if stage == "test" or stage is None:
             self.test_dataset = (
-                FilteredCelebA("test", self.transform,
-                               self.selected_attrs, self.data_root),
+                FilteredCelebA(
+                    "test", self.transform, self.selected_attrs, self.data_root
+                ),
             )
         print(
-            f"Training dataset is {len(self.train_dataset)} length. Validation samples are {len(self.val_dataset)}")
+            f"Training dataset is {len(self.train_dataset)} length. Validation samples are {len(self.val_dataset)}"
+        )
 
     def train_dataloader(self):
         return DataLoader(
@@ -92,11 +95,55 @@ class CelebADataModule(LightningDataModule):
         )
 
 
+class DoubleCelebADataModule(CelebADataModule):
+    def __init__(
+        self,
+        selected_attrs,  # Subset of the 40 CelebA attributes
+        generic_indices_file: str,
+        target_indices_file: str,
+        batch_size: int = 64,
+        num_workers: int = 4,
+        img_size: int = 128,
+        data_root: str = "data",
+        num_val_samples: int = 10,
+    ):
+        super().__init__(
+            selected_attrs,
+            batch_size,
+            num_workers,
+            img_size,
+            generic_indices_file,
+            data_root,
+            num_val_samples,
+        )
+        self.target_indices = np.load(target_indices_file)
+        self.target_train_dataset = None
+
+    def setup(self, stage: Optional[str] = None):
+        super().setup(stage)
+        if stage == "fit" or stage is None:
+            self.target_train_dataset = Subset(
+                FilteredCelebA(
+                    "all", self.transform, self.selected_attrs, self.data_root
+                ),
+                self.target_indices,
+            )
+
+    def train_dataloader(self):
+        target_dataloader = DataLoader(
+            self.target_train_dataset,
+            num_workers=self.num_workers,
+            batch_size=self.batch_size,
+            shuffle=True,
+            drop_last=True,
+        )
+        return {"generic": super().train_dataloader(), "target": target_dataloader}
+
+
 class FilteredCelebA(torchvision.datasets.CelebA):
     def __init__(self, split, transform, selected_attrs, data_root):
         super().__init__(data_root, split=split, transform=transform)
-        self.selected_attrs = [self.attr_names.index(
-            att) for att in selected_attrs]
+        self.selected_attrs = [self.attr_names.index(att) for att in selected_attrs]
 
     def __getitem__(self, index):
         img, attr = super().__getitem__(index)
