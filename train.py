@@ -211,7 +211,7 @@ def parse_args():
     parser.add_argument(
         "--checkpoint_frequency", default=1, type=int, help="Checkpoint every n epochs"
     )
-    parser.add_argument("--use_alternate_dataset", default=True, action="store_true")
+    parser.add_argument("--use_alternate_dataset", default=False, action="store_true")
 
     return parser.parse_args()
 
