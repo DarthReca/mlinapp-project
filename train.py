@@ -138,7 +138,7 @@ def parse_args():
     parser.add_argument(
         "--epochs", dest="epochs", type=int, default=30, help="number of epochs"
     )
-    parser.add_argument("--batch_size", dest="batch_size", type=int, default=64)
+    parser.add_argument("--batch_size", dest="batch_size", type=int, default=128)
     parser.add_argument("--num_workers", dest="num_workers", type=int, default=2)
     parser.add_argument(
         "--training_approach",
@@ -158,7 +158,9 @@ def parse_args():
         default=5,
         help="# of d updates per g update",
     )
-    parser.add_argument('--mode', dest='mode', default='wgan', choices=['wgan', 'lsgan', 'dcgan'])
+    parser.add_argument(
+        "--mode", dest="mode", default="wgan", choices=["wgan", "lsgan", "dcgan"]
+    )
     parser.add_argument("--no_pretrained", dest="no_pretrained", action="store_true")
     parser.add_argument("--resume_from_path", dest="resume_from_path", default=None)
 
@@ -209,6 +211,7 @@ def parse_args():
     parser.add_argument(
         "--checkpoint_frequency", default=1, type=int, help="Checkpoint every n epochs"
     )
+    parser.add_argument("--use_alternate_dataset", default=True, action="store_true")
 
     return parser.parse_args()
 
@@ -264,25 +267,27 @@ def main():
     pl.seed_everything(42, True)
 
     # Setup data module
-    celeba_datamodule = CelebADataModule(
-        selected_attrs=args.attrs_list,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        img_size=args.img_size,
-        indices_file=args.indices_path,
-        data_root=args.data_root,
-        num_val_samples=args.val_samples,
-    )
-    double_data_module = DoubleCelebADataModule(
-        selected_attrs=args.attrs_list,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        img_size=args.img_size,
-        data_root=args.data_root,
-        num_val_samples=args.val_samples,
-        target_indices_file="data/eyeglasses_only.npy",
-        generic_indices_file="data/no_eyeglasses.npy",
-    )
+    if not args.use_alternate_dataset:
+        celeba_datamodule = CelebADataModule(
+            selected_attrs=args.attrs_list,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            img_size=args.img_size,
+            indices_file=args.indices_path,
+            data_root=args.data_root,
+            num_val_samples=args.val_samples,
+        )
+    else:
+        celeba_datamodule = DoubleCelebADataModule(
+            selected_attrs=args.attrs_list,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            img_size=args.img_size,
+            data_root=args.data_root,
+            num_val_samples=args.val_samples,
+            target_indices_file="data/eyeglasses_only.npy",
+            generic_indices_file="data/no_eyeglasses.npy",
+        )
 
     # Setup model
     if args.resume_from_path:
