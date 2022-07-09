@@ -7,7 +7,8 @@ import pytorch_lightning as pl
 import pytorch_lightning.callbacks as pl_call
 import pytorch_lightning.loggers as loggers
 from modules import utils
-from modules.dataset.celeba_data_module import CelebADataModule
+from modules.dataset.celeba_data_module import (CelebADataModule,
+                                                DoubleCelebADataModule)
 from modules.neural_net.attgan import AttGAN
 from modules.utils import bcolors, pretty_time_delta
 
@@ -271,6 +272,16 @@ def main():
         indices_file=args.indices_path,
         data_root=args.data_root,
         num_val_samples=args.val_samples,
+    )
+    double_data_module = DoubleCelebADataModule(
+        selected_attrs=args.attrs_list,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
+        img_size=args.img_size,
+        data_root=args.data_root,
+        num_val_samples=args.val_samples,
+        target_indices_file="data/eyeglasses_only.npy",
+        generic_indices_file="data/no_eyeglasses.npy",
     )
 
     # Setup model
