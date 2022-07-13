@@ -9,7 +9,7 @@ import re
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--path", type=str, required=True, help="The path of the image upon which eyeglasses will be added")
 parser.add_argument("-a", "--attrs", type=str, required=True, choices=[ "custom", "damiano", "giulia", "daniele", "patrizio"], help="Which attributes should be used as target during generation, if 'custom' you have to modify the values inside the script before running it")
-parser.add_argument("-w", "--weights", type=str, required=True, default="weights/pretrained_plus_dg2.pth", help="The path of the weights to be used during inference")
+parser.add_argument("-w", "--weights", type=str, default="weights/pretrained_plus_dg2.pth", help="The path of the weights to be used during inference")
 args = parser.parse_args()
 
 # load the image
