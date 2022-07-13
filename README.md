@@ -19,34 +19,19 @@
 *** https://www.markdownguide.org/basic-syntax/#reference-style-links
 -->
 [![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
 [![MIT License][license-shield]][license-url]
 [![LinkedIn][linkedin-shield]][linkedin-url]
 
 
 
-<!-- PROJECT LOGO -->
-<br />
-<div align="center">
-  <a href="https://github.com/MLinApp-polito/mla-prj-02-am1.git"> 
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
-  </a>
 
-<h3 align="center">project_title</h3>
+<h3 align="center">MLINAPP Project</h3>
 
   <p align="center">
-    project_description
     <br />
     <a href="https://github.com/MLinApp-polito/mla-prj-02-am1.git"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/MLinApp-polito/mla-prj-02-am1.git">View Demo</a>
-    ·
-    <a href="https://github.com/MLinApp-polito/mla-prj-02-am1.git/issues">Report Bug</a>
-    ·
-    <a href=https://github.com/MLinApp-polito/mla-prj-02-am1.git/issues">Request Feature</a>
   </p>
 </div>
 
@@ -83,9 +68,9 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
-
-Here's a blank template to get started: To avoid retyping too much info. Do a search and replace with your text editor for the following: `github_username`, `repo_name`, `twitter_handle`, `linkedin_username`, `email`, `email_client`, `project_title`, `project_description`
+This repo contains the implementation of a project made during the course *Machine Learning in Applications* attended at Politecnico di Torino. 
+The objective of this project is to create a filter for facial attribute editing. It contains the original baseline and the
+other techniques exploited to finetune the network.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -93,133 +78,70 @@ Here's a blank template to get started: To avoid retyping too much info. Do a se
 
 ### Built With
 
-* [Pytorch](https://pytorch.org/)
+- [Pytorch](https://pytorch.org/)
+- [Pytorch Lightning](https://www.pytorchlightning.ai/)
 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
-
-
-### Functional Specification
-
-Here's a Short description of what is the focus of your application.
 
 
 <!-- GETTING STARTED -->
 ## Getting Started
 
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
-
 ### Prerequisites
 
-This is an example of how to list things you need to use the software and how to install them.
-#### Environment:
-  
+To setup the environment run the following script:  
   ```bash
   python setup_env.py
   ```
-##### Weights 
-40 attributes: 
-- https://www.dropbox.com/s/x50ihrph1atndyv/inject0.pth
+Otherwise install manually the dependencies with `pip install -r requirements.txt` and download the dataset and the desired weights.
 
-13 attributes: 
-- https://www.dropbox.com/s/44g36acwkxlsllw/inject0_orig.pth
-- https://www.dropbox.com/s/0ogyf0y44f9ecm2/inject1_orig.pth
-
-#### Dataset
-
-CelebA: https://www.dropbox.com/s/ydfwka7plnrd7dz/img_align_celeba.zip
-
-
-### Installation
-
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
-   ```sh
-   git clone https://github.com/github_username/repo_name.git
-   ```
-3. Install NPM packages
-   ```sh
-   npm install
-   ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
-   ```
+The dataset can be found in CelebA [website](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html) and the weights in the Pytorch
+implementation of AttGAN [repo](https://github.com/elvisyjlin/AttGAN-PyTorch).
 
 <p align="right">(<a href="#top">back to top</a>)</p>
-
-
 
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+To train the model simply run `train.py` with the desired arguments. The ones used in report are:
+- *lambda_1* : the weight of reconstruction loss
+- *epochs* : number of training epochs to run
+- *batch_size* : the size of batch
+- *indices_path* : the numpy file containing the indices of the images to use for training
+- *experiment_name* : the CometML experiment name
+- *target_attr* : the attribute to modify
+- *dg_ratio* : how many discriminator steps we run for each generator step
+- *freeze_layers* : how many low layers of discriminator to freeze
+- *use_alternate_dataset* : use **Alternate** method as described in report
+- *max_time* : timer for stopping training
+- *upload_weights* : if present upload checkpoint to CometML
 
-_For more examples, please refer to the [Documentation](https://example.com)_
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-
-
-<!-- ROADMAP -->
-## Roadmap
-
-- [] Feature 1
-- [] Feature 2
-- [] Feature 3
-    - [] Nested Feature
-
-See the [open issues](https://github.com/MLinApp-polito/mla-prj-02-am1.git/issues) for a full list of proposed features (and known issues).
+For more details use `python train.py --help` and refer to original implementation.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
-
-
-
-<!-- CONTRIBUTING -->
-## Contributing
-
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-
 
 <!-- LICENSE -->
 ## License
 
-Distributed under the MIT License. See `LICENSE.txt` for more information.
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+
+We used third-party AttGAN implementation see [ATTGAN](licenses/ATTGAN) for more details.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
+## Contributors
 
-
-<!-- CONTACT -->
-## Contact
-
-Your Name - [@twitter_handle](https://twitter.com/twitter_handle) - email@email_client.com
-
-Project Link: [https://github.com/github_username/repo_name](https://github.com/github_username/repo_name)
+The project was built by Damiano Bonaccorsi, [Daniele Rege Cambrin](https://github.com/DarthReca), Giulia D’Ascenzi, Patrizio de Girolamo.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
-
 
 
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 
-* []()
-* []()
-* []()
+- He, Zhenliang et al. "AttGAN: Facial Attribute Editing by Only Changing What You Want." (2017).
+- Mo, Sangwoo et al. "Freeze the Discriminator: a Simple Baseline for Fine-Tuning GANs." (2020).
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -228,7 +150,7 @@ Project Link: [https://github.com/github_username/repo_name](https://github.com/
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [contributors-shield]: https://img.shields.io/github/contributors/github_username/repo_name.svg?style=for-the-badge
-[contributors-url]: https://github.com/github_username/repo_name/graphs/contributors
+[contributors-url]: https://github.com/DarthReca/mlinapp-project/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/github_username/repo_name.svg?style=for-the-badge
 [forks-url]: https://github.com/github_username/repo_name/network/members
 [stars-shield]: https://img.shields.io/github/stars/github_username/repo_name.svg?style=for-the-badge
@@ -236,7 +158,7 @@ Project Link: [https://github.com/github_username/repo_name](https://github.com/
 [issues-shield]: https://img.shields.io/github/issues/github_username/repo_name.svg?style=for-the-badge
 [issues-url]: https://github.com/github_username/repo_name/issues
 [license-shield]: https://img.shields.io/github/license/github_username/repo_name.svg?style=for-the-badge
-[license-url]: https://github.com/github_username/repo_name/blob/master/LICENSE.txt
+[license-url]: https://github.com/DarthReca/mlinapp-project/blob/master/LICENSE
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/linkedin_username
 [product-screenshot]: images/screenshot.png

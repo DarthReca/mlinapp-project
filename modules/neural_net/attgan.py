@@ -1,15 +1,14 @@
-from typing import Any, Dict, Tuple
+# PytorchLightning adaptation of original by Elvis Yu-Jing Lin.
+
+from typing import Dict
 
 import pytorch_lightning as pl
 import torch.optim
 import torchmetrics as tm
 from torch import autograd
 from torchmetrics.image.fid import FrechetInceptionDistance
-from torchmetrics.image.inception import InceptionScore
 
 from .attgan_parts import Discriminators, Generator
-
-# Tutorial: https://pytorch-lightning.readthedocs.io/en/stable/notebooks/lightning_examples/basic-gan.html
 
 
 def images_from_tensor(img: torch.Tensor) -> torch.Tensor:

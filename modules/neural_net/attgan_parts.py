@@ -5,12 +5,13 @@
 
 """AttGAN, generator, and discriminator."""
 
-import torch.optim as optim
-import torch.nn.functional as F
-import torch.autograd as autograd
 import torch
+import torch.autograd as autograd
 import torch.nn as nn
-from .attgan_utils import LinearBlock, Conv2dBlock, ConvTranspose2dBlock
+import torch.nn.functional as F
+import torch.optim as optim
+
+from .attgan_utils import Conv2dBlock, ConvTranspose2dBlock, LinearBlock
 
 # This architecture is for images of 128x128
 # In the original AttGAN, slim.conv2d uses padding 'same'
