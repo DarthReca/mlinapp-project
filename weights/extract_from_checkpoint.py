@@ -3,7 +3,7 @@ import re
 import argparse
 
 def extract_from_checkpoint(input_checkpoint_path, output_weights_path):
-    checkpoint = torch.load(input_checkpoint_path)
+    checkpoint = torch.load(input_checkpoint_path, map_location="cpu")
     all_weights = checkpoint['state_dict']
     weights_without_fid = {k:all_weights[k] for k in all_weights.keys() if not re.match('fid.*', k)}
     torch.save(weights_without_fid, output_weights_path)
