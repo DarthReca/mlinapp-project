@@ -20,7 +20,7 @@
 -->
 <div align="center">
 
-<h3 align="center"><img src=foto.PNG></h3>
+<h3 align="center"><img src=titolo.PNG></h3>
 
 [![Contributors][contributors-shield]][contributors-url]
 [![MIT License][license-shield]][license-url]
