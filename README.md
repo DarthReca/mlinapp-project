@@ -70,6 +70,8 @@ This repo contains the implementation of a project made during the course *Machi
 The objective of this project is to create a filter for facial attribute editing. It contains the original baseline and the
 other techniques exploited to finetune the network.
 
+The final report can be found [here](doc/report.pdf).
+
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
