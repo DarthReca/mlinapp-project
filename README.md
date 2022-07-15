@@ -20,7 +20,8 @@
 -->
 <div align="center">
 
-<h3 align="center">MLINAPP Project</h3>
+<!--<h3 align="center"><img src=foto.PNG></h3>-->
+![alt text](/foto.png)
 
 [![Contributors][contributors-shield]][contributors-url]
 [![MIT License][license-shield]][license-url]
