@@ -27,7 +27,7 @@
 
   <p align="center">
     <br />
-    <a href="https://github.com/MLinApp-polito/mla-prj-02-am1.git"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/MLinApp-polito/mla-prj-02-am1.git/doc"><strong>Explore the docs »</strong></a>
     <br />
     <br />
   </p>
