@@ -130,7 +130,7 @@ We used third-party AttGAN implementation see [ATTGAN](licenses/ATTGAN) for more
 
 ## Contributors
 
-The project was built by Damiano Bonaccorsi, [Daniele Rege Cambrin](https://github.com/DarthReca), Giulia D’Ascenzi, Patrizio de Girolamo.
+The project was built by Damiano Bonaccorsi, [Daniele Rege Cambrin](https://github.com/DarthReca), Giulia D’Ascenzi, [Patrizio de Girolamo](https://github.com/patriziodegirolamo).
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
