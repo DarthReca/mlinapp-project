@@ -7,8 +7,7 @@ import pytorch_lightning as pl
 import pytorch_lightning.callbacks as pl_call
 import pytorch_lightning.loggers as loggers
 from modules import utils
-from modules.dataset.celeba_data_module import (CelebADataModule,
-                                                DoubleCelebADataModule)
+from modules.dataset.celeba_data_module import CelebADataModule, DoubleCelebADataModule
 from modules.neural_net.attgan import AttGAN
 from modules.utils import bcolors, pretty_time_delta
 
@@ -316,7 +315,7 @@ def main():
 
     # Setup Comet logger
     logger = loggers.CometLogger(
-        api_key="TvZ83pu3DEe7ETHo5gOp49GAg",
+        api_key="",
         project_name="mlinapp-project",
         experiment_name=args.experiment_name,
     )
